@@ -1,0 +1,44 @@
+# golangci-lint v2 configuration. Run locally with:
+#
+#   golangci-lint run ./...
+
+version: "2"
+
+run:
+  timeout: 3m
+
+linters:
+  default: standard
+  # `standard` already enables errcheck, govet, ineffassign, staticcheck,
+  # unused. Add a focused set of style/correctness linters.
+  enable:
+    - bodyclose
+    - copyloopvar
+    - gocritic
+    - gosec
+    - misspell
+    - nilerr
+    - revive
+    - unconvert
+  settings:
+    gosec:
+      # G104 (errors not checked) duplicates errcheck; G115 (integer overflow)
+      # is too noisy on simple len()/index conversions.
+      excludes:
+        - G104
+        - G115
+    revive:
+      rules:
+        - name: exported
+          arguments:
+            - disableStutteringCheck
+  exclusions:
+    rules:
+      # User-facing console writers — losing a stdout newline is not
+      # actionable; bare fmt.Fprintln/Fprintf is fine.
+      - path: 'internal/output/output\.go'
+        linters:
+          - errcheck
+      - path: 'loop\.go'
+        linters:
+          - errcheck
