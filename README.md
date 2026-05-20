@@ -14,8 +14,11 @@ The official interactive REPL for the [VoiceTel REST API](https://voicetel.com/d
 - [Features](#-features)
 - [Installation](#-installation)
 - [Quickstart](#-quickstart)
+- [One-shot mode (`-x`)](#-one-shot-mode--x)
 - [Authentication](#-authentication)
 - [Configuration](#-configuration)
+- [Environment variables](#-environment-variables)
+- [Building from source](#-building-from-source)
 - [Command Reference](#-command-reference)
 - [Examples](#-examples)
 - [API Documentation](#-api-documentation)
@@ -60,23 +63,33 @@ The official interactive REPL for the [VoiceTel REST API](https://voicetel.com/d
 go install github.com/voicetel/cli@latest
 ```
 
-Requires Go 1.22 or later. The binary lands at `$GOBIN/cli` (or `$GOPATH/bin/cli`) — rename it to `voicetel` if you'd like.
+Requires Go 1.22 or later. The binary lands at `$GOBIN/voicetel-cli` (or `$GOPATH/bin/voicetel-cli`).
 
 ### Pre-built binaries
 
-Grab a release from [GitHub Releases](https://github.com/voicetel/cli/releases) — Linux (amd64/arm64), macOS (amd64/arm64), and Windows (amd64) are all there.
+Grab a release from [GitHub Releases](https://github.com/voicetel/cli/releases) — macOS (amd64/arm64), Linux (amd64/arm64/386/arm), Windows (amd64/arm64), and FreeBSD (amd64) are all built per release.
 
 ```bash
-curl -sL https://github.com/voicetel/cli/releases/latest/download/voicetel-linux-amd64 -o voicetel
-chmod +x voicetel
-sudo mv voicetel /usr/local/bin/
+# Linux amd64 example — adjust the archive name for your platform.
+curl -sL https://github.com/voicetel/cli/releases/latest/download/voicetel-cli_0.2.0_linux-amd64.tar.gz | tar xz
+sudo mv voicetel-cli_0.2.0_linux-amd64/voicetel-cli /usr/local/bin/
 ```
+
+### From source
+
+```bash
+git clone https://github.com/voicetel/cli && cd cli
+make build           # → bin/voicetel-cli (local platform)
+make install         # → $GOPATH/bin/voicetel-cli
+```
+
+See [Building from source](#-building-from-source) for the full make-target list (including `make release` for the per-platform archives).
 
 ## 🏁 Quickstart
 
 ```text
-$ voicetel
-VoiceTel CLI 0.1.0  —  type `help` for commands, `exit` to quit.
+$ voicetel-cli
+VoiceTel CLI 0.2.0  —  type `help` for commands, `exit` to quit.
 Endpoint: https://api.voicetel.com
 No API key configured. Run `login <username> <password>` or `set api-key <key>`.
 
@@ -103,6 +116,28 @@ voicetel> numbers list
 
 voicetel> exit
 ```
+
+## ⚡ One-shot mode (`-x`)
+
+Run a single command non-interactively and exit. Useful for shell pipelines, cron jobs, and ad-hoc scripting — no REPL, no banner, no history file touched.
+
+```bash
+# Authenticate via env vars, then list numbers, then exit.
+export VOICETEL_USERNAME=1000000001
+export VOICETEL_PASSWORD=hunter2
+voicetel-cli -x 'account numbers'
+
+# Or use a pre-fetched API key directly:
+export VOICETEL_API_KEY=abcdef0123456789abcdef0123456789
+voicetel-cli -x 'numbers list'
+
+# Pipe the JSON output into jq:
+voicetel-cli -x 'account get' | jq .cash
+```
+
+The command string after `-x` is parsed the same way as a REPL line — group + subcommand + arguments (e.g. `acl add 203.0.113.0/24`, `messaging campaigns list`, `lookups cnam 2155551234`). Exit code is 0 on success, 1 on any error (including auth failures and rate-limit hits).
+
+In one-shot mode, **`Ctrl-C` cancels the in-flight request** (the REPL leaves Ctrl-C to readline; one-shot mode handles it directly).
 
 ## 🔑 Authentication
 
@@ -145,13 +180,56 @@ The file is written atomically (temp sibling + `fsync` + `rename`) and chmodded 
 You can override either value on launch:
 
 ```bash
-voicetel --api-key=$VOICETEL_API_KEY
-voicetel --base-url=https://staging.voicetel.com
+voicetel-cli --api-key=abcdef0123456789abcdef0123456789
+voicetel-cli --base-url=https://staging.voicetel.com
 ```
 
 Command-line flags do **not** persist; they win for the duration of the session only.
 
 History lives at `~/.voicetel/history` (also chmodded to `0600` by readline).
+
+## 🌳 Environment variables
+
+The CLI honors four environment variables. Precedence is **flag > env > config**.
+
+| Variable | Purpose |
+|---|---|
+| `VOICETEL_API_KEY` | 32-hex bearer token — installed directly on the client; no `login` round-trip. |
+| `VOICETEL_USERNAME` | Numeric account id. Paired with `VOICETEL_PASSWORD`, triggers a `login` at startup. |
+| `VOICETEL_PASSWORD` | Password — paired with `VOICETEL_USERNAME`; never persisted to `config.toml`. |
+| `VOICETEL_BASE_URL` | Override the API endpoint (rare — staging / sandbox builds). |
+
+```bash
+# Headless CI script: use env vars, run a single command, exit.
+export VOICETEL_USERNAME=1000000001
+export VOICETEL_PASSWORD=$(vault read -field=password secret/voicetel)
+voicetel-cli -x 'account info'
+```
+
+When `VOICETEL_USERNAME` and `VOICETEL_PASSWORD` are both set and no API key is available, the CLI calls the `login` endpoint at startup. The exchanged key is installed on the client but **not** written to `~/.voicetel/config.toml` (env-driven runs are intentionally ephemeral — they should not mutate user state).
+
+## 🔨 Building from source
+
+The repo ships a `Makefile` that produces pure-Go binaries (`CGO_ENABLED=0`) for 9 platforms — no per-target C toolchains needed.
+
+```bash
+make build       # local platform → ./bin/voicetel-cli
+make build-all   # all 9 platforms → ./dist/voicetel-cli_<version>_<os>-<arch>/voicetel-cli[.exe]
+make release     # build-all + per-platform .tar.gz / .zip archives in ./dist/
+make test        # go test ./...
+make vet         # go vet ./...
+make install     # CGO_ENABLED=0 go install . → $GOPATH/bin/voicetel-cli
+make clean       # rm -rf ./bin ./dist
+```
+
+Supported cross-compile targets:
+
+- **macOS**: `darwin/amd64`, `darwin/arm64`
+- **Linux**: `linux/amd64`, `linux/arm64`, `linux/386`, `linux/arm`
+- **Windows**: `windows/amd64`, `windows/arm64`
+- **FreeBSD**: `freebsd/amd64`
+
+To add or remove a target, edit the `PLATFORMS` variable at the top of the `Makefile`.
 
 ## 🗺️ Command Reference
 
