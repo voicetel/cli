@@ -68,9 +68,9 @@ func run(args []string, stdout, stderr io.Writer) error {
 	}
 
 	if *showVer {
-		fmt.Fprintf(stdout, "voicetel-cli %s\n", Version)
-		fmt.Fprintf(stdout, "  build time: %s\n", BuildTime)
-		fmt.Fprintf(stdout, "  git commit: %s\n", GitCommit)
+		_, _ = fmt.Fprintf(stdout, "voicetel-cli %s\n", Version)
+		_, _ = fmt.Fprintf(stdout, "  build time: %s\n", BuildTime)
+		_, _ = fmt.Fprintf(stdout, "  git commit: %s\n", GitCommit)
 		return nil
 	}
 
@@ -161,22 +161,26 @@ func run(args []string, stdout, stderr io.Writer) error {
 }
 
 // usage prints the --help text. Extracted from run() so tests can exercise
-// it without driving the full flag-parse path.
+// it without driving the full flag-parse path. fprintln/fprintf return
+// values are discarded — help text going nowhere because stderr is broken
+// would only matter if stderr was the user's actual help-display channel.
 func usage(w io.Writer, fs *flag.FlagSet) {
-	fmt.Fprintf(w, "voicetel-cli %s — interactive REPL for the VoiceTel REST API.\n\n", Version)
-	fmt.Fprintln(w, "Usage:")
-	fmt.Fprintln(w, "  voicetel-cli [--base-url=URL] [--api-key=KEY]")
-	fmt.Fprintln(w, "  voicetel-cli -x '<command>'      # one-shot, no REPL")
-	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "Environment variables (override config, are overridden by flags):")
-	fmt.Fprintf(w, "  %s     32-hex API key — installed directly, no login round-trip\n", envAPIKey)
-	fmt.Fprintf(w, "  %s    Numeric account id — combined with VOICETEL_PASSWORD, logs in on start\n", envUsername)
-	fmt.Fprintf(w, "  %s    Password — paired with VOICETEL_USERNAME; never persisted\n", envPassword)
-	fmt.Fprintf(w, "  %s    Override the API endpoint (rare; staging/sandbox)\n", envBaseURL)
-	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "Inside the REPL, type `help` for every command. Exit with `exit`, `quit`, or Ctrl-D.")
-	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "Flags:")
+	pf := func(format string, args ...any) { _, _ = fmt.Fprintf(w, format, args...) }
+	pl := func(s string) { _, _ = fmt.Fprintln(w, s) }
+	pf("voicetel-cli %s — interactive REPL for the VoiceTel REST API.\n\n", Version)
+	pl("Usage:")
+	pl("  voicetel-cli [--base-url=URL] [--api-key=KEY]")
+	pl("  voicetel-cli -x '<command>'      # one-shot, no REPL")
+	pl("")
+	pl("Environment variables (override config, are overridden by flags):")
+	pf("  %s     32-hex API key — installed directly, no login round-trip\n", envAPIKey)
+	pf("  %s    Numeric account id — combined with VOICETEL_PASSWORD, logs in on start\n", envUsername)
+	pf("  %s    Password — paired with VOICETEL_USERNAME; never persisted\n", envPassword)
+	pf("  %s    Override the API endpoint (rare; staging/sandbox)\n", envBaseURL)
+	pl("")
+	pl("Inside the REPL, type `help` for every command. Exit with `exit`, `quit`, or Ctrl-D.")
+	pl("")
+	pl("Flags:")
 	fs.PrintDefaults()
 }
 
@@ -187,15 +191,15 @@ func writeMemProfile(path string, stderr io.Writer) {
 	if path == "" {
 		return
 	}
-	f, err := os.Create(path)
+	f, err := os.Create(path) //nolint:gosec // user-controlled profile output path; cli writes where the operator asked
 	if err != nil {
-		fmt.Fprintf(stderr, "mem-profile: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "mem-profile: %v\n", err)
 		return
 	}
 	defer func() { _ = f.Close() }()
 	runtime.GC()
 	if err := pprof.WriteHeapProfile(f); err != nil {
-		fmt.Fprintf(stderr, "mem-profile: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "mem-profile: %v\n", err)
 	}
 }
 
