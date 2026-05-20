@@ -61,6 +61,8 @@ func run() error {
 
 	if *showVer {
 		fmt.Printf("voicetel-cli %s\n", Version)
+		fmt.Printf("  build time: %s\n", BuildTime)
+		fmt.Printf("  git commit: %s\n", GitCommit)
 		return nil
 	}
 

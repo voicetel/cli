@@ -1,5 +1,9 @@
 name: release
 
+# Builds + publishes the voicetel-cli release artifacts when a v* tag is pushed.
+# Delegates the build matrix to ./Makefile (`make release`) so the local
+# `make release` and the CI release produce byte-identical archives.
+
 on:
   push:
     tags:
@@ -7,61 +11,27 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag name (e.g. v0.1.0)"
+        description: "Tag name (e.g. v0.2.0)"
         required: true
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    name: build-${{ matrix.goos }}-${{ matrix.goarch }}
+  release:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-          - goos: linux
-            goarch: arm64
-          - goos: darwin
-            goarch: amd64
-          - goos: darwin
-            goarch: arm64
-          - goos: windows
-            goarch: amd64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.23"
-      - name: Build
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: "0"
-        run: |
-          mkdir -p dist
-          ext=""
-          if [ "$GOOS" = "windows" ]; then ext=".exe"; fi
-          out="dist/voicetel-${GOOS}-${GOARCH}${ext}"
-          go build -trimpath -ldflags="-s -w" -o "$out" .
-          (cd dist && shasum -a 256 "voicetel-${GOOS}-${GOARCH}${ext}" > "voicetel-${GOOS}-${GOARCH}${ext}.sha256")
-      - uses: actions/upload-artifact@v4
-        with:
-          name: voicetel-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/
 
-  publish:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
+      # `make release` cross-compiles to 9 platforms and packages each as
+      # tar.gz (darwin/linux/freebsd) or zip (windows). Output names:
+      # voicetel-cli_<version>_<os>-<arch>{.tar.gz,.zip}
+      - name: Build all platforms + package
+        run: make release
+
       - name: Resolve tag
         id: tag
         run: |
@@ -70,11 +40,18 @@ jobs:
           else
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           fi
-      - name: Create GitHub Release
+
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ steps.tag.outputs.tag }}" \
-            --title "VoiceTel CLI ${{ steps.tag.outputs.tag }}" \
-            --generate-notes \
-            dist/*
+          tag="${{ steps.tag.outputs.tag }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            # Re-upload archives (replaces existing) on retag / manual dispatch.
+            gh release upload "$tag" dist/*.tar.gz dist/*.zip --clobber
+          else
+            gh release create "$tag" \
+              --title "VoiceTel CLI $tag" \
+              --generate-notes \
+              dist/*.tar.gz dist/*.zip
+          fi
