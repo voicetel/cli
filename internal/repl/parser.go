@@ -93,8 +93,18 @@ func (p *Parsed) TailFrom(n int) string {
 // tokenize splits a line into whitespace-separated fields, honouring
 // single and double quotes.
 func tokenize(line string) ([]string, error) {
+	// Pre-size: count whitespace transitions as a quick upper bound on the
+	// token count. Saves one or two slice-grow reallocations on the common
+	// short-line case (verb + sub-verb + a few args). Counting is O(n) which
+	// is no cost — we already scan the line below.
+	estTokens := 1
+	for i := 0; i < len(line)-1; i++ {
+		if line[i] == ' ' && line[i+1] != ' ' {
+			estTokens++
+		}
+	}
+	out := make([]string, 0, estTokens)
 	var (
-		out   []string
 		cur   strings.Builder
 		inQ   byte
 		piece bool
