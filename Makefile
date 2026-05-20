@@ -15,9 +15,18 @@
 #
 # The binary name is voicetel-cli on every platform.
 
-BINARY  := voicetel-cli
-VERSION := $(shell awk -F'"' '/const Version/ {print $$2}' version.go)
-LDFLAGS := -s -w
+BINARY     := voicetel-cli
+VERSION    := $(shell awk -F'"' '/^[[:space:]]*Version[[:space:]]*=/ {print $$2; exit}' version.go)
+BUILD_TIME := $(shell date -u '+%Y-%m-%d %H:%M:%S UTC')
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+# -s -w strips symbol table + DWARF debug info for smaller binaries.
+# -X embeds build details into main.{Version,BuildTime,GitCommit} at link time
+# so `voicetel-cli --version` reports what / when / from-which-commit.
+LDFLAGS := -s -w \
+	-X 'main.Version=$(VERSION)' \
+	-X 'main.BuildTime=$(BUILD_TIME)' \
+	-X 'main.GitCommit=$(GIT_COMMIT)'
 
 PLATFORMS := \
 	darwin/amd64 \
