@@ -19,6 +19,9 @@ import (
 
 // Environment variable names recognized by the CLI. Flag values take
 // precedence over env vars; env vars take precedence over ~/.voicetel/config.toml.
+//
+//nolint:gosec // These are env-var NAMES (constants the CLI reads from os.Getenv),
+//             // not credential values. gosec G101 false-positives on the API_KEY substring.
 const (
 	envAPIKey   = "VOICETEL_API_KEY"
 	envUsername = "VOICETEL_USERNAME"
