@@ -231,6 +231,22 @@ Supported cross-compile targets:
 
 To add or remove a target, edit the `PLATFORMS` variable at the top of the `Makefile`.
 
+### Benchmarks
+
+`go test -bench=. -benchmem ./internal/repl/ ./internal/output/` exercises the parser, dispatcher tail-join, and JSON pretty-printer. Use as a baseline before perf-sensitive changes.
+
+### Profiling
+
+Hidden debug flags write `runtime/pprof` snapshots to disk for `go tool pprof` analysis:
+
+```bash
+voicetel-cli --cpu-profile=cpu.pprof --mem-profile=mem.pprof -x 'numbers list'
+go tool pprof cpu.pprof
+go tool pprof mem.pprof
+```
+
+No runtime overhead when the flags aren't set. CPU profile runs for the lifetime of the process; heap profile is captured at exit (after `runtime.GC()`).
+
 ## 🗺️ Command Reference
 
 ```text

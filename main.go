@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
+	"runtime/pprof"
 	"strconv"
 	"syscall"
 
@@ -37,10 +39,12 @@ func main() {
 
 func run() error {
 	var (
-		baseURL = flag.String("base-url", "", "Override the API endpoint for this session.")
-		apiKey  = flag.String("api-key", "", "Install an API key for this session (not persisted).")
-		oneShot = flag.String("x", "", "Run a single command non-interactively and exit. Example: -x 'account numbers'")
-		showVer = flag.Bool("version", false, "Print version and exit.")
+		baseURL    = flag.String("base-url", "", "Override the API endpoint for this session.")
+		apiKey     = flag.String("api-key", "", "Install an API key for this session (not persisted).")
+		oneShot    = flag.String("x", "", "Run a single command non-interactively and exit. Example: -x 'account numbers'")
+		cpuProfile = flag.String("cpu-profile", "", "Write a CPU profile to the given file (e.g. cpu.pprof). Hidden debug flag.")
+		memProfile = flag.String("mem-profile", "", "Write a heap profile to the given file (e.g. mem.pprof). Hidden debug flag.")
+		showVer    = flag.Bool("version", false, "Print version and exit.")
 	)
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "voicetel-cli %s — interactive REPL for the VoiceTel REST API.\n\n", Version)
@@ -66,6 +70,20 @@ func run() error {
 		fmt.Printf("  build time: %s\n", BuildTime)
 		fmt.Printf("  git commit: %s\n", GitCommit)
 		return nil
+	}
+
+	// CPU profiling, if requested. Writes a profile to the named file for the
+	// entire lifetime of the process. View via `go tool pprof <file>`.
+	if *cpuProfile != "" {
+		f, err := os.Create(*cpuProfile)
+		if err != nil {
+			return fmt.Errorf("cpu-profile: %w", err)
+		}
+		defer func() { _ = f.Close() }()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			return fmt.Errorf("cpu-profile: %w", err)
+		}
+		defer pprof.StopCPUProfile()
 	}
 
 	printer := output.New(os.Stdout, os.Stderr)
@@ -113,6 +131,24 @@ func run() error {
 			client.SetAPIKey(key)
 		}
 	}
+
+	// Heap profiling, if requested. Captured at process exit so the snapshot
+	// reflects steady-state memory after all command work is done.
+	defer func() {
+		if *memProfile == "" {
+			return
+		}
+		f, err := os.Create(*memProfile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "mem-profile: %v\n", err)
+			return
+		}
+		defer func() { _ = f.Close() }()
+		runtime.GC()
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			fmt.Fprintf(os.Stderr, "mem-profile: %v\n", err)
+		}
+	}()
 
 	// One-shot mode: dispatch the single command and exit. Skip the banner,
 	// skip readline, skip history.
