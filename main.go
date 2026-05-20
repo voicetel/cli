@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"runtime"
@@ -30,45 +31,46 @@ const (
 	envBaseURL  = "VOICETEL_BASE_URL"
 )
 
-func main() {
-	if err := run(); err != nil {
+// exitOnErr is the indirection layer between main() and os.Exit. Tests
+// override it to assert on the exit code without actually terminating the
+// test binary.
+var exitOnErr = func(err error) {
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "voicetel-cli:", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
+// main is the binary entry point. Thin wrapper around run() + exitOnErr so
+// every branch is testable.
+func main() {
+	exitOnErr(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+// run is the testable entry point. It accepts the command-line args (without
+// argv[0]), the writers to use for stdout/stderr, and parses flags via a
+// scoped flag.FlagSet — never touching flag.CommandLine. Tests drive it
+// with whatever args + writers they like.
+func run(args []string, stdout, stderr io.Writer) error {
+	fs := flag.NewFlagSet("voicetel-cli", flag.ContinueOnError)
+	fs.SetOutput(stderr)
 	var (
-		baseURL    = flag.String("base-url", "", "Override the API endpoint for this session.")
-		apiKey     = flag.String("api-key", "", "Install an API key for this session (not persisted).")
-		oneShot    = flag.String("x", "", "Run a single command non-interactively and exit. Example: -x 'account numbers'")
-		cpuProfile = flag.String("cpu-profile", "", "Write a CPU profile to the given file (e.g. cpu.pprof). Hidden debug flag.")
-		memProfile = flag.String("mem-profile", "", "Write a heap profile to the given file (e.g. mem.pprof). Hidden debug flag.")
-		showVer    = flag.Bool("version", false, "Print version and exit.")
+		baseURL    = fs.String("base-url", "", "Override the API endpoint for this session.")
+		apiKey     = fs.String("api-key", "", "Install an API key for this session (not persisted).")
+		oneShot    = fs.String("x", "", "Run a single command non-interactively and exit. Example: -x 'account numbers'")
+		cpuProfile = fs.String("cpu-profile", "", "Write a CPU profile to the given file (e.g. cpu.pprof). Hidden debug flag.")
+		memProfile = fs.String("mem-profile", "", "Write a heap profile to the given file (e.g. mem.pprof). Hidden debug flag.")
+		showVer    = fs.Bool("version", false, "Print version and exit.")
 	)
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "voicetel-cli %s — interactive REPL for the VoiceTel REST API.\n\n", Version)
-		fmt.Fprintln(os.Stderr, "Usage:")
-		fmt.Fprintln(os.Stderr, "  voicetel-cli [--base-url=URL] [--api-key=KEY]")
-		fmt.Fprintln(os.Stderr, "  voicetel-cli -x '<command>'      # one-shot, no REPL")
-		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, "Environment variables (override config, are overridden by flags):")
-		fmt.Fprintf(os.Stderr, "  %s     32-hex API key — installed directly, no login round-trip\n", envAPIKey)
-		fmt.Fprintf(os.Stderr, "  %s    Numeric account id — combined with VOICETEL_PASSWORD, logs in on start\n", envUsername)
-		fmt.Fprintf(os.Stderr, "  %s    Password — paired with VOICETEL_USERNAME; never persisted\n", envPassword)
-		fmt.Fprintf(os.Stderr, "  %s    Override the API endpoint (rare; staging/sandbox)\n", envBaseURL)
-		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, "Inside the REPL, type `help` for every command. Exit with `exit`, `quit`, or Ctrl-D.")
-		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, "Flags:")
-		flag.PrintDefaults()
+	fs.Usage = func() { usage(stderr, fs) }
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
-	flag.Parse()
 
 	if *showVer {
-		fmt.Printf("voicetel-cli %s\n", Version)
-		fmt.Printf("  build time: %s\n", BuildTime)
-		fmt.Printf("  git commit: %s\n", GitCommit)
+		fmt.Fprintf(stdout, "voicetel-cli %s\n", Version)
+		fmt.Fprintf(stdout, "  build time: %s\n", BuildTime)
+		fmt.Fprintf(stdout, "  git commit: %s\n", GitCommit)
 		return nil
 	}
 
@@ -86,7 +88,7 @@ func run() error {
 		defer pprof.StopCPUProfile()
 	}
 
-	printer := output.New(os.Stdout, os.Stderr)
+	printer := output.New(stdout, stderr)
 
 	cfg, err := config.Load()
 	if err != nil && !errors.Is(err, config.ErrNotFound) {
@@ -134,21 +136,7 @@ func run() error {
 
 	// Heap profiling, if requested. Captured at process exit so the snapshot
 	// reflects steady-state memory after all command work is done.
-	defer func() {
-		if *memProfile == "" {
-			return
-		}
-		f, err := os.Create(*memProfile)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "mem-profile: %v\n", err)
-			return
-		}
-		defer func() { _ = f.Close() }()
-		runtime.GC()
-		if err := pprof.WriteHeapProfile(f); err != nil {
-			fmt.Fprintf(os.Stderr, "mem-profile: %v\n", err)
-		}
-	}()
+	defer writeMemProfile(*memProfile, stderr)
 
 	// One-shot mode: dispatch the single command and exit. Skip the banner,
 	// skip readline, skip history.
@@ -170,6 +158,45 @@ func run() error {
 		Prompt:   "voicetel> ",
 		Cfg:      cfg,
 	})
+}
+
+// usage prints the --help text. Extracted from run() so tests can exercise
+// it without driving the full flag-parse path.
+func usage(w io.Writer, fs *flag.FlagSet) {
+	fmt.Fprintf(w, "voicetel-cli %s — interactive REPL for the VoiceTel REST API.\n\n", Version)
+	fmt.Fprintln(w, "Usage:")
+	fmt.Fprintln(w, "  voicetel-cli [--base-url=URL] [--api-key=KEY]")
+	fmt.Fprintln(w, "  voicetel-cli -x '<command>'      # one-shot, no REPL")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Environment variables (override config, are overridden by flags):")
+	fmt.Fprintf(w, "  %s     32-hex API key — installed directly, no login round-trip\n", envAPIKey)
+	fmt.Fprintf(w, "  %s    Numeric account id — combined with VOICETEL_PASSWORD, logs in on start\n", envUsername)
+	fmt.Fprintf(w, "  %s    Password — paired with VOICETEL_USERNAME; never persisted\n", envPassword)
+	fmt.Fprintf(w, "  %s    Override the API endpoint (rare; staging/sandbox)\n", envBaseURL)
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Inside the REPL, type `help` for every command. Exit with `exit`, `quit`, or Ctrl-D.")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Flags:")
+	fs.PrintDefaults()
+}
+
+// writeMemProfile captures a heap profile to the named file. No-op when path
+// is empty. Errors are reported to stderr but never propagated — profiling
+// failures should not break the main work the CLI was actually doing.
+func writeMemProfile(path string, stderr io.Writer) {
+	if path == "" {
+		return
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		fmt.Fprintf(stderr, "mem-profile: %v\n", err)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	runtime.GC()
+	if err := pprof.WriteHeapProfile(f); err != nil {
+		fmt.Fprintf(stderr, "mem-profile: %v\n", err)
+	}
 }
 
 // runOneShot wires the command registry minus the readline loop, dispatches a

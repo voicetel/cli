@@ -30,9 +30,14 @@ type Config struct {
 // ErrNotFound is returned by Load when the file does not exist.
 var ErrNotFound = errors.New("config: file does not exist")
 
+// userHomeDir is a function variable so tests can simulate the
+// `os.UserHomeDir` error path (which is otherwise hard to trigger on a
+// normal dev/CI machine where HOME is always set).
+var userHomeDir = os.UserHomeDir
+
 // Dir returns ~/.voicetel for the current user. Exported for tests.
 func Dir() (string, error) {
-	home, err := os.UserHomeDir()
+	home, err := userHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("config: %w", err)
 	}
