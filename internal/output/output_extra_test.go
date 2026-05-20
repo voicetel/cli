@@ -87,7 +87,7 @@ func TestIsTerminalDevNull(t *testing.T) {
 	if err != nil {
 		t.Skipf("can't open /dev/null: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if isTerminal(f) {
 		t.Error("isTerminal(/dev/null): want false (not a TTY)")
 	}

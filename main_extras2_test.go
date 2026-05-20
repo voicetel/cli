@@ -47,10 +47,10 @@ func TestRunOneShotConfigSaveFailureNonFatal(t *testing.T) {
 	// Point HOME at a path whose parent dir is read-only so MkdirAll fails.
 	parent := t.TempDir()
 	readonly := filepath.Join(parent, "ro")
-	if err := os.Mkdir(readonly, 0o500); err != nil {
+	if err := os.Mkdir(readonly, 0o500); err != nil { //nolint:gosec // 0500 r-x is intentional — test exercises a read-only parent dir
 		t.Fatalf("mkdir: %v", err)
 	}
-	defer func() { _ = os.Chmod(readonly, 0o700) }()
+	defer func() { _ = os.Chmod(readonly, 0o700) }() //nolint:gosec // restore so t.TempDir can clean up
 	if os.Geteuid() == 0 {
 		t.Skip("root bypasses chmod")
 	}
@@ -75,10 +75,10 @@ func TestRunOneShotConfigSaveFailureNonFatal(t *testing.T) {
 func TestRunLoopWithConfigSaveFailureNonFatal(t *testing.T) {
 	parent := t.TempDir()
 	readonly := filepath.Join(parent, "ro")
-	if err := os.Mkdir(readonly, 0o500); err != nil {
+	if err := os.Mkdir(readonly, 0o500); err != nil { //nolint:gosec // 0500 r-x is intentional — test exercises a read-only parent dir
 		t.Fatalf("mkdir: %v", err)
 	}
-	defer func() { _ = os.Chmod(readonly, 0o700) }()
+	defer func() { _ = os.Chmod(readonly, 0o700) }() //nolint:gosec // restore so t.TempDir can clean up
 	if os.Geteuid() == 0 {
 		t.Skip("root bypasses chmod")
 	}
@@ -143,7 +143,7 @@ func TestRunReplModeWithDevNullStdin(t *testing.T) {
 	if err != nil {
 		t.Skipf("can't open /dev/null: %v", err)
 	}
-	defer devnull.Close()
+	defer func() { _ = devnull.Close() }()
 	oldStdin := os.Stdin
 	os.Stdin = devnull
 	defer func() { os.Stdin = oldStdin }()

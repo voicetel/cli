@@ -38,10 +38,10 @@ func TestSaveToMkdirError(t *testing.T) {
 	}
 	parent := t.TempDir()
 	readonly := filepath.Join(parent, "readonly")
-	if err := os.Mkdir(readonly, 0o500); err != nil { // r-x — can't create children
+	if err := os.Mkdir(readonly, 0o500); err != nil { //nolint:gosec // 0500 r-x is the entire point — test exercises mkdir failure when parent is unwritable
 		t.Fatalf("mkdir readonly: %v", err)
 	}
-	defer func() { _ = os.Chmod(readonly, 0o700) }() // let TempDir clean up
+	defer func() { _ = os.Chmod(readonly, 0o700) }() //nolint:gosec // restore writability so t.TempDir can clean up
 
 	target := filepath.Join(readonly, "child", "config.toml")
 	err := SaveTo(target, &Config{APIKey: "k"})

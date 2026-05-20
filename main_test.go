@@ -645,7 +645,7 @@ func TestRunLoopWithDevNullStdin(t *testing.T) {
 	if err != nil {
 		t.Skipf("can't open /dev/null: %v", err)
 	}
-	defer devnull.Close()
+	defer func() { _ = devnull.Close() }()
 	// Save + restore stdin around the call — readline reads from os.Stdin.
 	oldStdin := os.Stdin
 	os.Stdin = devnull
@@ -680,13 +680,13 @@ func TestMainBinaryHandlesBadFlag(t *testing.T) {
 	}
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "voicetel-cli-test")
-	cmd := exec.Command("go", "build", "-o", bin, ".")
+	cmd := exec.Command("go", "build", "-o", bin, ".") //nolint:gosec // building our own test binary at a temp path
 	cmd.Dir = "."
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
 	}
 	// Run with an unknown flag — main() should exit non-zero.
-	cmd = exec.Command(bin, "--nosuchflag")
+	cmd = exec.Command(bin, "--nosuchflag") //nolint:gosec // test-built binary at a known path
 	out, err := cmd.CombinedOutput()
 	if err == nil {
 		t.Errorf("expected non-zero exit, got success. output: %s", out)
@@ -699,12 +699,12 @@ func TestMainBinaryPrintsVersion(t *testing.T) {
 	}
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "voicetel-cli-test")
-	cmd := exec.Command("go", "build", "-o", bin, ".")
+	cmd := exec.Command("go", "build", "-o", bin, ".") //nolint:gosec // building our own test binary at a temp path
 	cmd.Dir = "."
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
 	}
-	cmd = exec.Command(bin, "--version")
+	cmd = exec.Command(bin, "--version") //nolint:gosec // test-built binary at a known path
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("--version: %v\n%s", err, out)
