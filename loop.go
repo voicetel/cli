@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/chzyer/readline"
 
@@ -25,8 +24,17 @@ type loopOptions struct {
 	Cfg      *config.Config
 }
 
-// runLoop starts the interactive REPL. It blocks until the user exits
-// or stdin closes.
+// lineSource abstracts the bit of *readline.Instance that the REPL loop
+// actually uses. *readline.Instance satisfies it natively; tests substitute a
+// scripted source backed by a slice of lines.
+type lineSource interface {
+	Readline() (string, error)
+	Close() error
+}
+
+// runLoop builds a readline-backed lineSource and hands off to runLoopWith.
+// Split this way so unit tests can drive the inner loop without spawning a
+// real PTY or interacting with the user's terminal config.
 func runLoop(ctx context.Context, opts loopOptions) error {
 	registry := commands.BuildRegistry()
 	builtins, helpTopics, groupSubs := registry.CompletionData()
@@ -42,7 +50,16 @@ func runLoop(ctx context.Context, opts loopOptions) error {
 	if err != nil {
 		return fmt.Errorf("repl: init readline: %w", err)
 	}
-	defer func() { _ = rl.Close() }()
+	return runLoopWith(ctx, opts, registry, rl, opts.Printer.Stdout())
+}
+
+// runLoopWith is the testable inner loop. It reads lines from src, dispatches
+// each through the registry, and returns when src returns io.EOF, commands.
+// ErrExit fires, or src.Readline errors with anything else. `eofOut` is where
+// a trailing newline gets written on EOF (typically os.Stdout to keep the
+// shell prompt cosmetic-correct).
+func runLoopWith(ctx context.Context, opts loopOptions, registry *commands.Registry, src lineSource, eofOut io.Writer) error {
+	defer func() { _ = src.Close() }()
 
 	cmdCtx := &commands.Context{
 		Ctx:     ctx,
@@ -58,12 +75,12 @@ func runLoop(ctx context.Context, opts loopOptions) error {
 	}
 
 	for {
-		line, err := rl.Readline()
+		line, err := src.Readline()
 		if errors.Is(err, readline.ErrInterrupt) {
 			continue
 		}
 		if errors.Is(err, io.EOF) {
-			fmt.Fprintln(os.Stdout)
+			fmt.Fprintln(eofOut)
 			return nil
 		}
 		if err != nil {
@@ -78,9 +95,8 @@ func runLoop(ctx context.Context, opts loopOptions) error {
 	}
 }
 
-// dispatchLine parses a single line and dispatches it. Exposed at
-// package level so tests can drive command dispatch without spinning up
-// readline.
+// dispatchLine parses a single line and dispatches it. Exposed at package
+// level so tests can drive command dispatch without spinning up readline.
 func dispatchLine(cctx *commands.Context, r *commands.Registry, line string) error {
 	p, err := repl.Parse(line)
 	if err != nil {
