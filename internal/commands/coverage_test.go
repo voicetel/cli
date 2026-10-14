@@ -94,7 +94,7 @@ func TestCommandSmoke(t *testing.T) {
 		{"GET", "/v2.2/numbers/2015550123/fax", `{"status":"success","data":{"number":"2015550123","email":"a@b.c"}}`, "numbers get-fax 2015550123"},
 		{"PUT", "/v2.2/numbers/2015550123/fax", `{"status":"success","data":{"number":"2015550123","email":"a@b.c"}}`, `numbers set-fax 2015550123 {"email":"a@b.c"}`},
 		{"DELETE", "/v2.2/numbers/2015550123/fax", `{"status":"success","data":null}`, "numbers remove-fax 2015550123"},
-		{"PUT", "/v2.2/numbers/2015550123/forward", `{"status":"success","data":{"number":"2015550123"}}`, `numbers set-forward 2015550123 {"destination":2125550123}`},
+		{"PUT", "/v2.2/numbers/2015550123/forward", `{"status":"success","data":{"number":"2015550123"}}`, `numbers set-forward 2015550123 {"destination":"2125550123"}`},
 		{"DELETE", "/v2.2/numbers/2015550123/forward", `{"status":"success","data":null}`, "numbers remove-forward 2015550123"},
 		{"GET", "/v2.2/numbers/2015550123/sms", `{"status":"success","data":{"number":"2015550123","type":"email","resource":"a@b.c"}}`, "numbers get-sms 2015550123"},
 		{"PUT", "/v2.2/numbers/2015550123/sms", `{"status":"success","data":{"number":"2015550123","type":"email","resource":"a@b.c"}}`, `numbers set-sms 2015550123 {"type":"email","resource":"a@b.c"}`},
