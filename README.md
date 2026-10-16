@@ -45,7 +45,7 @@ The official interactive REPL for the [VoiceTel REST API](https://voicetel.com/d
 - **Account** — profile, sub-accounts, CDRs, credits, payments, MRC, registration, password recovery.
 - **e911** — record provisioning, address validation, lookup, removal.
 - **Gateways** — list, create, update, delete, view bound numbers.
-- **Messaging** — SMS & MMS sending, message history, 10DLC brand and campaign registration, per-number messaging state.
+- **Messaging** — SMS & MMS sending, message history, 10DLC brand and campaign registration, per-number messaging state, and messaging health (account overview, per-number live check, spam-blocked samples, alert-email setting).
 - **Lookups** — CNAM and LRN dips.
 - **iNumbering** — inventory search, coverage queries, number orders, port-in submissions, port-out availability.
 - **Support** — ticket create / read / update / delete, threaded messages, replies.
@@ -157,7 +157,7 @@ voicetel> whoami
 {
   "apiKey": "abcd...4321",
   "baseURL": "https://api.voicetel.com",
-  "rateLimits": "account/cdr, account/mrc, account/payments, account/registration, account/api-key (login): 6 req/hr/IP"
+  "rateLimits": "account, account/cdr, account/recurring-charges, account/payments, account/registration, account/api-key (login): 6 req/hr/IP"
 }
 ```
 
@@ -307,6 +307,11 @@ messaging create-brand <json>
 messaging campaign-status
 messaging create-campaign <json>
 messaging numbers-state [--numbers=2015550123,2015551235]
+messaging health
+messaging health-alerts
+messaging set-health-alerts <true|false>
+messaging health-check <number>
+messaging health-samples <number>
 
 numbers list
 numbers add <json>

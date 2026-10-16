@@ -4,11 +4,11 @@ import (
 	"strings"
 
 	"github.com/voicetel/cli/internal/repl"
-	voicetel "github.com/voicetel/go-sdk"
+	voicetel "github.com/voicetel/go-sdk/v2"
 )
 
 func registerMessaging(r *Registry) {
-	g := &Group{Name: "messaging", Description: "SMS/MMS, message history, 10DLC brands & campaigns."}
+	g := &Group{Name: "messaging", Description: "SMS/MMS, message history, 10DLC brands & campaigns, messaging health."}
 	g.Commands = []*Command{
 		{
 			Names:    []string{"history"},
@@ -103,6 +103,64 @@ func registerMessaging(r *Registry) {
 				}
 				out, err := c.Client.Messaging().NumbersState(c.Ctx, ns)
 				return printResultG(c, out, err)
+			},
+		},
+		{
+			Names:    []string{"health"},
+			Synopsis: "Account-wide messaging health overview (portal Messaging tab).",
+			Usage:    "messaging health",
+			Run: func(c *Context, _ []string, _ string) error {
+				out, err := c.Client.Messaging().Health(c.Ctx)
+				return printResultG(c, &out, err)
+			},
+		},
+		{
+			Names:    []string{"health-alerts"},
+			Synopsis: "Read the alert-email setting.",
+			Usage:    "messaging health-alerts",
+			Run: func(c *Context, _ []string, _ string) error {
+				out, err := c.Client.Messaging().HealthAlerts(c.Ctx)
+				return printResultG(c, &out, err)
+			},
+		},
+		{
+			Names:    []string{"set-health-alerts"},
+			Synopsis: "Turn alert emails on or off.",
+			Usage:    "messaging set-health-alerts <true|false>",
+			Run: func(c *Context, args []string, _ string) error {
+				if err := requireArgs("messaging set-health-alerts", args, 1, "<true|false>"); err != nil {
+					return err
+				}
+				enabled, err := argBool("messaging set-health-alerts", args[0])
+				if err != nil {
+					return err
+				}
+				out, err := c.Client.Messaging().SetHealthAlerts(c.Ctx, enabled)
+				return printResultG(c, &out, err)
+			},
+		},
+		{
+			Names:    []string{"health-check"},
+			Synopsis: "Live health check of one number (30/hour/account).",
+			Usage:    "messaging health-check <number>",
+			Run: func(c *Context, args []string, _ string) error {
+				if err := requireArgs("messaging health-check", args, 1, "<number>"); err != nil {
+					return err
+				}
+				out, err := c.Client.Messaging().HealthCheck(c.Ctx, args[0])
+				return printResultG(c, &out, err)
+			},
+		},
+		{
+			Names:    []string{"health-samples"},
+			Synopsis: "Recent outbound messages from a number blocked as spam.",
+			Usage:    "messaging health-samples <number>",
+			Run: func(c *Context, args []string, _ string) error {
+				if err := requireArgs("messaging health-samples", args, 1, "<number>"); err != nil {
+					return err
+				}
+				out, err := c.Client.Messaging().HealthSamples(c.Ctx, args[0])
+				return printResultG(c, &out, err)
 			},
 		},
 	}

@@ -9,7 +9,7 @@ package sdkclient
 import (
 	"context"
 
-	voicetel "github.com/voicetel/go-sdk"
+	voicetel "github.com/voicetel/go-sdk/v2"
 )
 
 // Client is the minimal surface the CLI relies on. A real *voicetel.Client

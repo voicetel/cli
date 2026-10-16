@@ -81,7 +81,7 @@ func whoamiCommand() *Command {
 			return c.Printer.JSON(map[string]any{
 				"apiKey":     masked,
 				"baseURL":    c.Client.BaseURL(),
-				"rateLimits": "account/cdr, account/mrc, account/payments, account/registration, account/api-key (login): 6 req/hr/IP",
+				"rateLimits": "account, account/cdr, account/recurring-charges, account/payments, account/registration, account/api-key (login): 6 req/hr/IP",
 			})
 		},
 	}

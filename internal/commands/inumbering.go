@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/voicetel/cli/internal/repl"
-	voicetel "github.com/voicetel/go-sdk"
+	voicetel "github.com/voicetel/go-sdk/v2"
 )
 
 func registerINumbering(r *Registry) {

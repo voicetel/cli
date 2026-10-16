@@ -81,6 +81,11 @@ func TestCommandSmoke(t *testing.T) {
 		{"GET", "/v2.2/messaging/campaigns", `{"status":"success","data":{"campaigns":[]}}`, "messaging campaign-status"},
 		{"POST", "/v2.2/messaging/campaigns", `{"status":"success","data":{"result":{"statusCode":"200","status":"Success"}}}`, `messaging create-campaign {"messagingBrandId":"B1","externalCampaignId":"E","campaignDescription":"d"}`},
 		{"GET", "/v2.2/numbers/messaging", `{"status":"success","data":{"numbers":[]}}`, "messaging numbers-state --numbers=2015550123"},
+		{"GET", "/v2.2/messaging/health", `{"status":"success","data":{"summary":{"numbers":3}}}`, "messaging health"},
+		{"GET", "/v2.2/messaging/health/alerts", `{"status":"success","data":{"enabled":true}}`, "messaging health-alerts"},
+		{"PUT", "/v2.2/messaging/health/alerts", `{"status":"success","data":{"enabled":false}}`, "messaging set-health-alerts false"},
+		{"POST", "/v2.2/messaging/health/check", `{"status":"success","data":{"inService":true}}`, "messaging health-check 2015550123"},
+		{"GET", "/v2.2/messaging/health/samples", `{"status":"success","data":{"samples":[]}}`, "messaging health-samples 2015550123"},
 
 		// numbers
 		{"POST", "/v2.2/numbers", `{"status":"success","data":{"number":"2015550123","route":4}}`, `numbers add {"number":"2015550123"}`},
@@ -231,6 +236,10 @@ func TestErrorBranches(t *testing.T) {
 		"messaging create-campaign not-json",
 		"messaging history --start=bad",
 		"messaging history --end=bad",
+		"messaging set-health-alerts",
+		"messaging set-health-alerts notabool",
+		"messaging health-check",
+		"messaging health-samples",
 
 		// ACL
 		"acl add not-json",

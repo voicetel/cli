@@ -75,6 +75,15 @@ func argInt(label string, raw string) (int, error) {
 	return n, nil
 }
 
+// argBool parses arg as a bool, surfacing a clear error.
+func argBool(label string, raw string) (bool, error) {
+	b, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false, fmt.Errorf("%s: expected true or false, got %q", label, raw)
+	}
+	return b, nil
+}
+
 // printResultG is sugar for "if err return err, else JSON-print v".
 // Generic over T so callers can pass typed SDK return values without
 // having to nil-unwrap explicitly. nil pointers are detected and

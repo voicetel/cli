@@ -3,7 +3,7 @@ package commands
 import (
 	"strings"
 
-	voicetel "github.com/voicetel/go-sdk"
+	voicetel "github.com/voicetel/go-sdk/v2"
 )
 
 func registerNumbers(r *Registry) {
