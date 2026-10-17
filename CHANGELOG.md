@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 — 2026-10-17
+
+Rebuild against go-sdk v2.2.17 (v2.2.16 was retracted after a history purge).
+No CLI behavior changes.
+
 ## 0.3.0 — 2026-10-17
 
 Track go-sdk v2.2.16 / VoiceTel API spec v2.2.16. **Breaking flag changes.**

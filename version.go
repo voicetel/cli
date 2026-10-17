@@ -8,7 +8,7 @@ package main
 // `git rev-parse --short HEAD`. They default to "unknown" so `go build .` (no
 // Makefile) still produces a runnable binary.
 var (
-	Version   = "0.3.0"
+	Version   = "0.3.1"
 	BuildTime = "unknown"
 	GitCommit = "unknown"
 )
