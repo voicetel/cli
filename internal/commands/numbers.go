@@ -316,26 +316,26 @@ func registerNumbers(r *Registry) {
 		},
 		{
 			Names:    []string{"unassign-campaign"},
-			Synopsis: "Remove the campaign binding from a TN.",
-			Usage:    "numbers unassign-campaign <number>",
+			Synopsis: "Remove a campaign binding from a TN.",
+			Usage:    "numbers unassign-campaign <number> <campaignId>",
 			Run: func(c *Context, args []string, _ string) error {
-				if err := requireArgs("numbers unassign-campaign", args, 1, "<number>"); err != nil {
+				if err := requireArgs("numbers unassign-campaign", args, 2, "<number> <campaignId>"); err != nil {
 					return err
 				}
-				out, err := c.Client.Numbers().UnassignCampaign(c.Ctx, args[0])
+				out, err := c.Client.Numbers().UnassignCampaign(c.Ctx, args[0], args[1])
 				return printResultG(c, out, err)
 			},
 		},
 		{
 			Names:    []string{"bulk-unassign-campaign"},
-			Synopsis: "Remove campaign bindings from many TNs at once.",
-			Usage:    "numbers bulk-unassign-campaign <2015550123,2015551235>",
+			Synopsis: "Remove a campaign binding from many TNs at once.",
+			Usage:    "numbers bulk-unassign-campaign <2015550123,2015551235> <campaignId>",
 			Run: func(c *Context, args []string, _ string) error {
-				if err := requireArgs("numbers bulk-unassign-campaign", args, 1, "<csv of numbers>"); err != nil {
+				if err := requireArgs("numbers bulk-unassign-campaign", args, 2, "<csv of numbers> <campaignId>"); err != nil {
 					return err
 				}
 				ns := strings.Split(args[0], ",")
-				out, err := c.Client.Numbers().BulkUnassignCampaign(c.Ctx, ns)
+				out, err := c.Client.Numbers().BulkUnassignCampaign(c.Ctx, ns, args[1])
 				return printResultG(c, out, err)
 			},
 		},

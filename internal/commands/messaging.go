@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/voicetel/cli/internal/repl"
@@ -12,26 +13,29 @@ func registerMessaging(r *Registry) {
 	g.Commands = []*Command{
 		{
 			Names:    []string{"history"},
-			Synopsis: "Fetch message history.",
-			Usage:    "messaging history [--number TN] [--start unix] [--end unix] [--type sms|mms|dlr]",
+			Synopsis: "Fetch message history for one number.",
+			Usage:    "messaging history --number TN [--from unix] [--to unix] [--type sms|mms|dlr]",
 			Run: func(c *Context, args []string, _ string) error {
 				fs := repl.NewFlagSet()
 				number := fs.RegisterString("number")
-				start := fs.RegisterString("start")
-				end := fs.RegisterString("end")
+				from := fs.RegisterString("from")
+				to := fs.RegisterString("to")
 				typ := fs.RegisterString("type")
 				if err := fs.Parse(args); err != nil {
 					return err
 				}
+				if *number == "" {
+					return fmt.Errorf("messaging history: --number is required")
+				}
 				opts := voicetel.HistoryOptions{Number: *number, Type: *typ}
 				var err error
-				if *start != "" {
-					if opts.Start, err = argInt("--start", *start); err != nil {
+				if *from != "" {
+					if opts.From, err = argInt("--from", *from); err != nil {
 						return err
 					}
 				}
-				if *end != "" {
-					if opts.End, err = argInt("--end", *end); err != nil {
+				if *to != "" {
+					if opts.To, err = argInt("--to", *to); err != nil {
 						return err
 					}
 				}
@@ -67,10 +71,13 @@ func registerMessaging(r *Registry) {
 		},
 		{
 			Names:    []string{"campaign-status"},
-			Synopsis: "Read all campaign statuses.",
-			Usage:    "messaging campaign-status",
-			Run: func(c *Context, _ []string, _ string) error {
-				out, err := c.Client.Messaging().CampaignStatus(c.Ctx)
+			Synopsis: "Read the status of the given campaigns.",
+			Usage:    "messaging campaign-status <id[,id...]>\n  Comma-separated alphanumeric campaign ids; max 100.",
+			Run: func(c *Context, args []string, _ string) error {
+				if err := requireArgs("messaging campaign-status", args, 1, "<id[,id...]>"); err != nil {
+					return err
+				}
+				out, err := c.Client.Messaging().CampaignStatus(c.Ctx, strings.Split(args[0], ","))
 				return printResultG(c, out, err)
 			},
 		},
@@ -90,17 +97,17 @@ func registerMessaging(r *Registry) {
 		{
 			Names:    []string{"numbers-state"},
 			Synopsis: "Messaging state for many TNs.",
-			Usage:    "messaging numbers-state [--numbers=2015550123,2015551235]",
+			Usage:    "messaging numbers-state --numbers=2015550123,2015551235\n  Comma-separated 10-digit numbers (required); max 1000.",
 			Run: func(c *Context, args []string, _ string) error {
 				fs := repl.NewFlagSet()
 				numbers := fs.RegisterString("numbers")
 				if err := fs.Parse(args); err != nil {
 					return err
 				}
-				var ns []string
-				if *numbers != "" {
-					ns = strings.Split(*numbers, ",")
+				if *numbers == "" {
+					return fmt.Errorf("messaging numbers-state: --numbers is required")
 				}
+				ns := strings.Split(*numbers, ",")
 				out, err := c.Client.Messaging().NumbersState(c.Ctx, ns)
 				return printResultG(c, out, err)
 			},

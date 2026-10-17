@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"strconv"
 )
 
 // loginCommand swaps username + password for an API key and installs it
@@ -12,17 +11,15 @@ func loginCommand() *Command {
 		Names:    []string{"login"},
 		Synopsis: "Exchange username + password for a 32-hex API key.",
 		Usage: "login <username> <password>\n" +
-			"  Username is your numeric account id. Password is never persisted.\n" +
-			"  Counts against the 6 req/hr/IP rate limit on account/* endpoints.",
+			"  Username is your numeric account id. The password is never persisted:\n" +
+			"  not to the config file, and this line is kept out of REPL history.\n" +
+			"  Counts against the 6 req/hr/IP rate limit on account, account/cdr,\n" +
+			"  account/recurring-charges, and account/api-key.",
 		Run: func(c *Context, args []string, _ string) error {
 			if len(args) != 2 {
 				return fmt.Errorf("login: expected 2 arguments (username, password), got %d", len(args))
 			}
-			username, err := strconv.Atoi(args[0])
-			if err != nil {
-				return fmt.Errorf("login: username must be an integer: %w", err)
-			}
-			key, err := c.Client.Login(c.Ctx, username, args[1])
+			key, err := c.Client.Login(c.Ctx, args[0], args[1])
 			if err != nil {
 				return err
 			}
@@ -69,7 +66,7 @@ func whoamiCommand() *Command {
 		Synopsis: "Show current API key, base URL, and caveats.",
 		Usage: "whoami\n" +
 			"  Prints the redacted API key, the configured base URL, and a note\n" +
-			"  about the 6 req/hr/IP rate limit on account/* endpoints.",
+			"  about the endpoints subject to rate limits.",
 		Run: func(c *Context, _ []string, _ string) error {
 			key := c.Client.APIKey()
 			masked := "<not set>"
@@ -81,7 +78,7 @@ func whoamiCommand() *Command {
 			return c.Printer.JSON(map[string]any{
 				"apiKey":     masked,
 				"baseURL":    c.Client.BaseURL(),
-				"rateLimits": "account, account/cdr, account/recurring-charges, account/payments, account/registration, account/api-key (login): 6 req/hr/IP",
+				"rateLimits": "account, account/cdr, account/recurring-charges, account/api-key (login): 6 req/hr/IP; messaging health-check: 30/hr/account",
 			})
 		},
 	}

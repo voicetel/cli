@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/voicetel/cli/internal/repl"
 	voicetel "github.com/voicetel/go-sdk/v2"
 )
@@ -10,44 +12,35 @@ func registerINumbering(r *Registry) {
 	g.Commands = []*Command{
 		{
 			Names:    []string{"search-inventory"},
-			Synopsis: "Search available TNs by NPA/NXX/state/etc.",
-			Usage: "inumbering search-inventory [--npa N] [--nxx N] [--state XX]\n" +
-				"                            [--rate-center NAME] [--contains DIGITS]\n" +
-				"                            [--ends-with DIGITS] [--limit N]",
+			Synopsis: "Search available TNs by prefix/wildcard mask.",
+			Usage: "inumbering search-inventory --tn-mask MASK [--quantity N]\n" +
+				"                            [--province XX] [--rate-center NAME] [--lata N]\n" +
+				"  MASK is a prefix or wildcard pattern: 201, 201555, 201555* (required).",
 			Run: func(c *Context, args []string, _ string) error {
 				fs := repl.NewFlagSet()
-				npa := fs.RegisterString("npa")
-				nxx := fs.RegisterString("nxx")
-				state := fs.RegisterString("state")
+				tnMask := fs.RegisterString("tn-mask")
+				quantity := fs.RegisterString("quantity")
+				province := fs.RegisterString("province")
 				rateCenter := fs.RegisterString("rate-center")
-				contains := fs.RegisterString("contains")
-				endsWith := fs.RegisterString("ends-with")
-				limit := fs.RegisterString("limit")
+				lata := fs.RegisterString("lata")
 				if err := fs.Parse(args); err != nil {
 					return err
 				}
+				if *tnMask == "" {
+					return fmt.Errorf("inumbering search-inventory: --tn-mask is required (e.g. --tn-mask=201555*)")
+				}
 				q := voicetel.InventoryQuery{
-					State:      *state,
+					TnMask:     *tnMask,
+					Province:   *province,
 					RateCenter: *rateCenter,
-					Contains:   *contains,
-					EndsWith:   *endsWith,
 				}
 				var err error
-				if *npa != "" {
-					if q.NPA, err = argInt("--npa", *npa); err != nil {
+				if *quantity != "" {
+					if q.Quantity, err = argInt("--quantity", *quantity); err != nil {
 						return err
 					}
 				}
-				if *nxx != "" {
-					if q.NXX, err = argInt("--nxx", *nxx); err != nil {
-						return err
-					}
-				}
-				if *limit != "" {
-					if q.Limit, err = argInt("--limit", *limit); err != nil {
-						return err
-					}
-				}
+				q.Lata = *lata
 				out, err := c.Client.INumbering().SearchInventory(c.Ctx, q)
 				return printResultG(c, out, err)
 			},
@@ -55,15 +48,32 @@ func registerINumbering(r *Registry) {
 		{
 			Names:    []string{"coverage"},
 			Synopsis: "Aggregated availability buckets.",
-			Usage:    "inumbering coverage [--state XX] [--rate-center NAME]",
+			Usage: "inumbering coverage --count-by state|city|rateCenter|npanxx|block\n" +
+				"                     [--loc-state XX] [--city NAME] [--rc-abbre NAME]\n" +
+				"                     [--npa NPA] [--lata N]",
 			Run: func(c *Context, args []string, _ string) error {
 				fs := repl.NewFlagSet()
-				state := fs.RegisterString("state")
-				rateCenter := fs.RegisterString("rate-center")
+				countBy := fs.RegisterString("count-by")
+				locState := fs.RegisterString("loc-state")
+				city := fs.RegisterString("city")
+				rcAbbre := fs.RegisterString("rc-abbre")
+				npa := fs.RegisterString("npa")
+				lata := fs.RegisterString("lata")
 				if err := fs.Parse(args); err != nil {
 					return err
 				}
-				q := voicetel.CoverageQuery{State: *state, RateCenter: *rateCenter}
+				if *countBy == "" {
+					return fmt.Errorf("inumbering coverage: --count-by is required (state|city|rateCenter|npanxx|block)")
+				}
+				q := voicetel.CoverageQuery{
+					CountBy:  *countBy,
+					LocState: *locState,
+					City:     *city,
+					RcAbbre:  *rcAbbre,
+					NPA:      *npa,
+				}
+				var err error
+				q.Lata = *lata
 				out, err := c.Client.INumbering().Coverage(c.Ctx, q)
 				return printResultG(c, out, err)
 			},
@@ -93,16 +103,12 @@ func registerINumbering(r *Registry) {
 		{
 			Names:    []string{"port"},
 			Synopsis: "Fetch one port-in by id.",
-			Usage:    "inumbering port <id>",
+			Usage:    "inumbering port <id>\n  <id> is the 5-character pid returned by submit-port, or an id from `inumbering ports`.",
 			Run: func(c *Context, args []string, _ string) error {
 				if err := requireArgs("inumbering port", args, 1, "<id>"); err != nil {
 					return err
 				}
-				id, err := argInt("port id", args[0])
-				if err != nil {
-					return err
-				}
-				out, err := c.Client.INumbering().Port(c.Ctx, id)
+				out, err := c.Client.INumbering().Port(c.Ctx, args[0])
 				return printResultG(c, out, err)
 			},
 		},

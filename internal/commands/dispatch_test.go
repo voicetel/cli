@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -314,16 +315,20 @@ func TestLookupsCNAM(t *testing.T) {
 func TestMessagingHistoryFlags(t *testing.T) {
 	h := newHarness(t)
 	h.stub("GET", "/v2.2/messages", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("number") != "2015550123" {
+		q := r.URL.Query()
+		if q.Get("number") != "2015550123" {
 			t.Errorf("missing number query: %s", r.URL.RawQuery)
 		}
-		if r.URL.Query().Get("type") != "sms" {
+		if q.Get("type") != "sms" {
 			t.Errorf("missing type query: %s", r.URL.RawQuery)
+		}
+		if q.Get("from") != "1747345200" || q.Get("to") != "1747258800" {
+			t.Errorf("from/to range wrong: %s", r.URL.RawQuery)
 		}
 		_, _ = fmt.Fprint(w, `{"status":"success","data":{"number":"2015550123","type":"sms","fromTs":0,"toTs":0,"messages":[]}}`)
 	})
 	r := BuildRegistry()
-	if err := h.dispatch("messaging history --number=2015550123 --type=sms", r); err != nil {
+	if err := h.dispatch("messaging history --number=2015550123 --type=sms --from=1747345200 --to=1747258800", r); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(h.out.String(), `"type": "sms"`) {
@@ -334,16 +339,20 @@ func TestMessagingHistoryFlags(t *testing.T) {
 func TestINumberingSearchInventoryFlags(t *testing.T) {
 	h := newHarness(t)
 	h.stub("GET", "/v2.2/inventory", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("npa") != "201" {
-			t.Errorf("missing npa: %s", r.URL.RawQuery)
+		q := r.URL.Query()
+		if q.Get("tnMask") != "201555*" {
+			t.Errorf("missing tnMask: %s", r.URL.RawQuery)
 		}
-		if r.URL.Query().Get("state") != "NJ" {
-			t.Errorf("missing state: %s", r.URL.RawQuery)
+		if q.Get("province") != "NJ" {
+			t.Errorf("missing province: %s", r.URL.RawQuery)
+		}
+		if q.Get("quantity") != "25" {
+			t.Errorf("missing quantity: %s", r.URL.RawQuery)
 		}
 		_, _ = fmt.Fprint(w, `{"status":"success","data":{"numbers":[{"number":"2015550123","rateCenter":"X","city":"Y","province":"NJ","lata":"222"}]}}`)
 	})
 	r := BuildRegistry()
-	if err := h.dispatch("inumbering search-inventory --npa=201 --state=NJ", r); err != nil {
+	if err := h.dispatch("inumbering search-inventory --tn-mask=201555* --province=NJ --quantity=25", r); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(h.out.String(), "2015550123") {
@@ -351,17 +360,93 @@ func TestINumberingSearchInventoryFlags(t *testing.T) {
 	}
 }
 
+func TestINumberingCoverageFlags(t *testing.T) {
+	h := newHarness(t)
+	h.stub("GET", "/v2.2/inventory/coverage", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if q.Get("countBy") != "rateCenter" {
+			t.Errorf("missing countBy: %s", r.URL.RawQuery)
+		}
+		if q.Get("locState") != "NJ" {
+			t.Errorf("missing locState: %s", r.URL.RawQuery)
+		}
+		_, _ = fmt.Fprint(w, `{"status":"success","data":{"coverage":[{"count":100,"rcAbbre":"CLOSTER"}]}}`)
+	})
+	r := BuildRegistry()
+	if err := h.dispatch("inumbering coverage --count-by=rateCenter --loc-state=NJ", r); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(h.out.String(), "CLOSTER") {
+		t.Errorf("got: %s", h.out.String())
+	}
+}
+
 func TestNumbersBulkUnassignCampaign(t *testing.T) {
 	h := newHarness(t)
-	h.stub("DELETE", "/v2.2/numbers/messaging-campaign", func(w http.ResponseWriter, _ *http.Request) {
+	h.stub("DELETE", "/v2.2/numbers/messaging-campaign", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if q.Get("numbers") != "2015550123,2015551235" {
+			t.Errorf("numbers query wrong: %s", r.URL.RawQuery)
+		}
+		if q.Get("campaignId") != "ABCDEFG" {
+			t.Errorf("campaignId query wrong: %s", r.URL.RawQuery)
+		}
 		_, _ = fmt.Fprint(w, `{"status":"success","data":{"campaignId":"ABCDEFG","unassignedNumbers":["2015550123","2015551235"]}}`)
 	})
 	r := BuildRegistry()
-	if err := h.dispatch("numbers bulk-unassign-campaign 2015550123,2015551235", r); err != nil {
+	if err := h.dispatch("numbers bulk-unassign-campaign 2015550123,2015551235 ABCDEFG", r); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(h.out.String(), "ABCDEFG") {
 		t.Errorf("got: %s", h.out.String())
+	}
+}
+
+func TestACLRemoveQueryParams(t *testing.T) {
+	h := newHarness(t)
+	h.stub("DELETE", "/v2.2/acl", func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("cidrs"); got != "203.0.113.0/24,203.0.113.1/32" {
+			t.Errorf("cidrs query wrong: %s", r.URL.RawQuery)
+		}
+		_, _ = fmt.Fprint(w, `{"status":"success","data":{"removed":[{"cidr":"203.0.113.0/24"}]}}`)
+	})
+	r := BuildRegistry()
+	if err := h.dispatch("acl remove 203.0.113.0/24,203.0.113.1/32", r); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(h.out.String(), "203.0.113.0/24") {
+		t.Errorf("got: %s", h.out.String())
+	}
+}
+
+func TestMessagingCampaignStatusArgs(t *testing.T) {
+	h := newHarness(t)
+	h.stub("GET", "/v2.2/messaging/campaigns", func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("ids"); got != "C1,C2" {
+			t.Errorf("ids query wrong: %s", r.URL.RawQuery)
+		}
+		_, _ = fmt.Fprint(w, `{"status":"success","data":{"campaigns":[{"id":"C1","status":"CAMPAIGN_DCA_COMPLETE","numbers":[]}]}}`)
+	})
+	r := BuildRegistry()
+	if err := h.dispatch("messaging campaign-status C1,C2", r); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(h.out.String(), "CAMPAIGN_DCA_COMPLETE") {
+		t.Errorf("got: %s", h.out.String())
+	}
+}
+
+func TestAccountCreditsStatusFilter(t *testing.T) {
+	h := newHarness(t)
+	h.stub("GET", "/v2.2/account/credits", func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("status"); got != "unpaid" {
+			t.Errorf("status query wrong: %s", r.URL.RawQuery)
+		}
+		_, _ = fmt.Fprint(w, `{"status":"success","data":{"credits":[]}}`)
+	})
+	r := BuildRegistry()
+	if err := h.dispatch("account credits unpaid", r); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -432,11 +517,31 @@ func TestLogin(t *testing.T) {
 func TestLoginBadArgs(t *testing.T) {
 	h := newHarness(t)
 	r := BuildRegistry()
-	if err := h.dispatch("login alice secret", r); err == nil {
-		t.Fatal("expected error: username must be int")
+	if err := h.dispatch("login", r); err == nil {
+		t.Fatal("expected error: no arguments")
 	}
 	if err := h.dispatch("login 1000", r); err == nil {
 		t.Fatal("expected error: missing password")
+	}
+	if err := h.dispatch("login 1000 secret extra", r); err == nil {
+		t.Fatal("expected error: too many arguments")
+	}
+}
+
+// The API types username as a string, so the CLI passes it through verbatim —
+// no client-side integer validation.
+func TestLoginPassesUsernameVerbatim(t *testing.T) {
+	h := newHarness(t)
+	h.stub("POST", "/v2.2/account/api-key", func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if !strings.Contains(string(body), `"username":"1000000001"`) {
+			t.Errorf("username should be a JSON string on the wire: %s", body)
+		}
+		_, _ = fmt.Fprint(w, `{"status":"success","data":{"apikey":"abcdef0123456789abcdef0123456789"}}`)
+	})
+	r := BuildRegistry()
+	if err := h.dispatch("login 1000000001 hunter2", r); err != nil {
+		t.Fatal(err)
 	}
 }
 

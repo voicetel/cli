@@ -303,14 +303,25 @@ func TestRunEnvUsernamePasswordTriggersLogin(t *testing.T) {
 	}
 }
 
-func TestRunEnvUsernameNonInteger(t *testing.T) {
+// The spec types the login username as a string, so the CLI passes
+// VOICETEL_USERNAME through verbatim — no client-side integer parsing.
+func TestRunEnvUsernamePassedThroughAsString(t *testing.T) {
 	isolatedHome(t)
-	t.Setenv(envUsername, "not-a-number")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if !strings.Contains(string(body), `"username":"1000000001"`) {
+			t.Errorf("username should be a JSON string on the wire: %s", body)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"apikey":"ffffffffffffffffffffffffffffffff"}`))
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv(envBaseURL, srv.URL)
+	t.Setenv(envUsername, "1000000001")
 	t.Setenv(envPassword, "hunter2")
 	var stdout, stderr bytes.Buffer
-	err := run([]string{"-x", "help"}, &stdout, &stderr)
-	if err == nil || !strings.Contains(err.Error(), "must be an integer") {
-		t.Fatalf("expected integer-parse error, got %v", err)
+	if err := run([]string{"-x", "help"}, &stdout, &stderr); err != nil {
+		t.Fatalf("run with env login: %v", err)
 	}
 }
 
@@ -421,6 +432,7 @@ func TestWriteMemProfileBadPathReportsError(t *testing.T) {
 func TestUsagePrints(t *testing.T) {
 	var buf bytes.Buffer
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	fs.SetOutput(&buf)
 	fs.String("x", "", "")
 	usage(&buf, fs)
 	got := buf.String()

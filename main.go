@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
-	"strconv"
 	"syscall"
 
 	"github.com/voicetel/cli/internal/commands"
@@ -57,7 +56,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 	var (
 		baseURL    = fs.String("base-url", "", "Override the API endpoint for this session.")
 		apiKey     = fs.String("api-key", "", "Install an API key for this session (not persisted).")
-		oneShot    = fs.String("x", "", "Run a single command non-interactively and exit. Example: -x 'account numbers'")
+		oneShot    = fs.String("x", "", "Run a single command non-interactively and exit. Example: -x 'numbers list'")
 		cpuProfile = fs.String("cpu-profile", "", "Write a CPU profile to the given file (e.g. cpu.pprof). Hidden debug flag.")
 		memProfile = fs.String("mem-profile", "", "Write a heap profile to the given file (e.g. mem.pprof). Hidden debug flag.")
 		showVer    = fs.Bool("version", false, "Print version and exit.")
@@ -122,11 +121,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		uStr := os.Getenv(envUsername)
 		pStr := os.Getenv(envPassword)
 		if uStr != "" && pStr != "" {
-			username, err := strconv.Atoi(uStr)
-			if err != nil {
-				return fmt.Errorf("%s must be an integer, got %q: %w", envUsername, uStr, err)
-			}
-			key, err := client.Login(ctx, username, pStr)
+			key, err := client.Login(ctx, uStr, pStr)
 			if err != nil {
 				return fmt.Errorf("login (from %s / %s): %w", envUsername, envPassword, err)
 			}
@@ -174,7 +169,7 @@ func usage(w io.Writer, fs *flag.FlagSet) {
 	pl("")
 	pl("Environment variables (override config, are overridden by flags):")
 	pf("  %s     32-hex API key — installed directly, no login round-trip\n", envAPIKey)
-	pf("  %s    Numeric account id — combined with VOICETEL_PASSWORD, logs in on start\n", envUsername)
+	pf("  %s    Account username (digits, e.g. 1000000001) — combined with VOICETEL_PASSWORD, logs in on start\n", envUsername)
 	pf("  %s    Password — paired with VOICETEL_USERNAME; never persisted\n", envPassword)
 	pf("  %s    Override the API endpoint (rare; staging/sandbox)\n", envBaseURL)
 	pl("")

@@ -35,12 +35,31 @@ type lineSource interface {
 // runLoop builds a readline-backed lineSource and hands off to runLoopWith.
 // Split this way so unit tests can drive the inner loop without spawning a
 // real PTY or interacting with the user's terminal config.
+//
+// History handling: readline works against a per-session shim (see
+// history.go) so the durable file stays mode 0600 and never carries
+// credential lines; when the loop ends the shim is filtered back into place.
+// Failing to prepare history aborts startup — better no REPL than
+// world-readable or credential-bearing history.
 func runLoop(ctx context.Context, opts loopOptions) error {
 	registry := commands.BuildRegistry()
 	builtins, helpTopics, groupSubs := registry.CompletionData()
+	histFile := opts.HistFile
+	if histFile != "" {
+		session, err := prepareHistory(histFile)
+		if err != nil {
+			return err
+		}
+		histFile = session
+		defer func() {
+			if err := finalizeHistory(session, opts.HistFile); err != nil {
+				opts.Printer.Errorf("history: %v", err)
+			}
+		}()
+	}
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:                 opts.Prompt,
-		HistoryFile:            opts.HistFile,
+		HistoryFile:            histFile,
 		AutoComplete:           repl.BuildCompleter(builtins, helpTopics, groupSubs),
 		InterruptPrompt:        "^C",
 		EOFPrompt:              "exit",

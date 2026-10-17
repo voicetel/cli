@@ -16,11 +16,16 @@ import (
 	"github.com/voicetel/cli/internal/sdkclient"
 )
 
-// runLoop init: pass a HistFile pointing into a non-existent directory so
-// readline.NewEx fails. Verifies the wrapped "init readline" error returns
-// cleanly from runLoop rather than panicking.
+// runLoop init: a HistFile whose parent path is a regular file cannot be
+// prepared (writeHistory's MkdirAll fails with "not a directory"). runLoop
+// must surface the history-prep error cleanly — it refuses to start rather
+// than run without history hardening.
 func TestRunLoopInitFailsCleanly(t *testing.T) {
 	isolatedHome(t)
+	blocker := filepath.Join(t.TempDir(), "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	var stdout, stderr bytes.Buffer
 	cfg := &config.Config{BaseURL: "https://example.invalid", APIKey: "k"}
 	client := sdkclient.New(cfg.BaseURL, cfg.APIKey, "test-ua/0.0")
@@ -29,13 +34,15 @@ func TestRunLoopInitFailsCleanly(t *testing.T) {
 		Printer:  output.New(&stdout, &stderr),
 		Cfg:      cfg,
 		Prompt:   "x> ",
-		HistFile: "/nonexistent-parent-dir/foo/bar/hist", // dirs don't exist
+		HistFile: filepath.Join(blocker, "hist"), // parent is a regular file
 	}
 	err := runLoop(context.Background(), opts)
-	// readline.NewEx may or may not error on an unreachable HistFile —
-	// some versions silently skip history, others propagate. The point of
-	// this test is just to exercise the code path; either result is OK.
-	_ = err
+	if err == nil {
+		t.Fatal("expected history-prep error, got nil")
+	}
+	if !strings.Contains(err.Error(), "history") {
+		t.Errorf("error should name the history file, got %v", err)
+	}
 }
 
 // runOneShot whose set api-key triggers OnConfigChanged, which itself

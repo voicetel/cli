@@ -20,7 +20,7 @@ type Client interface {
 	APIKey() string
 
 	// Auth
-	Login(ctx context.Context, username int, password string) (string, error)
+	Login(ctx context.Context, username string, password string) (string, error)
 	SetAPIKey(key string)
 
 	// Resource accessors — return the concrete service pointers so callers
@@ -68,7 +68,7 @@ func (r *realClient) rebuild(apiKey string) {
 func (r *realClient) BaseURL() string { return r.inner.BaseURL() }
 func (r *realClient) APIKey() string  { return r.inner.APIKey() }
 
-func (r *realClient) Login(ctx context.Context, username int, password string) (string, error) {
+func (r *realClient) Login(ctx context.Context, username string, password string) (string, error) {
 	// Login calls into the underlying transport, which mutates the
 	// embedded apiKey. So we don't need to rebuild — the existing client
 	// instance is good.

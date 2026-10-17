@@ -2,12 +2,10 @@
 
 The official interactive REPL for the [VoiceTel REST API](https://voicetel.com/docs/api/v2.2/) — provision numbers, place orders, validate e911, send messages, and manage your account, all from a single keystroke-friendly prompt on top of the [VoiceTel Go SDK](https://github.com/voicetel/go-sdk).
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
-![Go](https://img.shields.io/badge/go-1.22%2B-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
+![Go](https://img.shields.io/badge/go-1.26%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-lightgrey)
-
-![REPL demo](docs/demo.gif)
 
 ## 📚 Table of Contents
 
@@ -31,7 +29,7 @@ The official interactive REPL for the [VoiceTel REST API](https://voicetel.com/d
 ### 🧑‍💻 REPL-First UX
 - **Interactive prompt** — drops you straight into a `voicetel>` shell. No subcommands to memorise, no flag-soup one-liners.
 - **Line editing** powered by [`github.com/chzyer/readline`](https://github.com/chzyer/readline) — Emacs-style movement, reverse-i-search, the works.
-- **Persistent history** at `~/.voicetel/history` so you can `↑` back into yesterday's session.
+- **Persistent history** at `~/.voicetel/history` (mode `0600`) so you can `↑` back into yesterday's session — credential-bearing lines (`login`, `set api-key`) are never written to it.
 - **Tab autocomplete** across the entire command tree — top-level resources, sub-commands, and known argument shapes.
 - **Pretty-printed JSON** by default. Errors print in red when you're on a TTY; plain otherwise (so logs stay clean).
 
@@ -63,7 +61,7 @@ The official interactive REPL for the [VoiceTel REST API](https://voicetel.com/d
 go install github.com/voicetel/cli@latest
 ```
 
-Requires Go 1.22 or later. The binary lands at `$GOBIN/voicetel-cli` (or `$GOPATH/bin/voicetel-cli`).
+Requires Go 1.26 or later. The binary lands at `$GOBIN/voicetel-cli` (or `$GOPATH/bin/voicetel-cli`).
 
 ### Pre-built binaries
 
@@ -125,7 +123,7 @@ Run a single command non-interactively and exit. Useful for shell pipelines, cro
 # Authenticate via env vars, then list numbers, then exit.
 export VOICETEL_USERNAME=1000000001
 export VOICETEL_PASSWORD=hunter2
-voicetel-cli -x 'account numbers'
+voicetel-cli -x 'numbers list'
 
 # Or use a pre-fetched API key directly:
 export VOICETEL_API_KEY=abcdef0123456789abcdef0123456789
@@ -135,7 +133,7 @@ voicetel-cli -x 'numbers list'
 voicetel-cli -x 'account get' | jq .cash
 ```
 
-The command string after `-x` is parsed the same way as a REPL line — group + subcommand + arguments (e.g. `acl add 203.0.113.0/24`, `messaging campaigns list`, `lookups cnam 2155551234`). Exit code is 0 on success, 1 on any error (including auth failures and rate-limit hits).
+The command string after `-x` is parsed the same way as a REPL line — group + subcommand + arguments (e.g. `acl remove 203.0.113.0/24`, `messaging campaign-status CAMP002`, `lookups cnam 2155551234`). Exit code is 0 on success, 1 on any error (including auth failures and rate-limit hits).
 
 In one-shot mode, **`Ctrl-C` cancels the in-flight request** (the REPL leaves Ctrl-C to readline; one-shot mode handles it directly).
 
@@ -143,9 +141,9 @@ In one-shot mode, **`Ctrl-C` cancels the in-flight request** (the REPL leaves Ct
 
 Two ways to install an API key:
 
-1. **`login <username> <password>`** — exchanges credentials for a fresh 32-hex bearer token via `POST /v2.2/account/api-key`. The token is persisted to `~/.voicetel/config.toml`; the password never is.
+1. **`login <username> <password>`** — exchanges credentials for a fresh 32-hex bearer token via `POST /v2.2/account/api-key`. The token is persisted to `~/.voicetel/config.toml`; the password never is (and the `login` line itself is kept out of REPL history).
 
-   This endpoint shares the **6 req/hr/IP** rate limit with the rest of `/account/*`.
+   This endpoint shares a **6 req/hr/IP** rate limit with `GET /v2.2/account`, `GET /v2.2/account/cdr`, and `GET /v2.2/account/recurring-charges`. Separately, `messaging health-check` is limited to **30/hr per account**.
 
 2. **`set api-key <key>`** — installs an existing key directly. Useful if you've fetched one out of band.
 
@@ -157,7 +155,7 @@ voicetel> whoami
 {
   "apiKey": "abcd...4321",
   "baseURL": "https://api.voicetel.com",
-  "rateLimits": "account, account/cdr, account/recurring-charges, account/payments, account/registration, account/api-key (login): 6 req/hr/IP"
+  "rateLimits": "account, account/cdr, account/recurring-charges, account/api-key (login): 6 req/hr/IP; messaging health-check: 30/hr/account"
 }
 ```
 
@@ -186,7 +184,7 @@ voicetel-cli --base-url=https://staging.voicetel.com
 
 Command-line flags do **not** persist; they win for the duration of the session only.
 
-History lives at `~/.voicetel/history` (also chmodded to `0600` by readline).
+History lives at `~/.voicetel/history`, always rewritten atomically at mode `0600`. Credential-bearing lines — `login` and `set api-key` — are filtered out and never persisted: the REPL points readline at a per-session shim file (mode `0600`) and merges it back, filtered, on exit.
 
 ## 🌳 Environment variables
 
@@ -203,7 +201,7 @@ The CLI honors four environment variables. Precedence is **flag > env > config**
 # Headless CI script: use env vars, run a single command, exit.
 export VOICETEL_USERNAME=1000000001
 export VOICETEL_PASSWORD=$(vault read -field=password secret/voicetel)
-voicetel-cli -x 'account info'
+voicetel-cli -x 'account get'
 ```
 
 When `VOICETEL_USERNAME` and `VOICETEL_PASSWORD` are both set and no API key is available, the CLI calls the `login` endpoint at startup. The exchanged key is installed on the client but **not** written to `~/.voicetel/config.toml` (env-driven runs are intentionally ephemeral — they should not mutate user state).
@@ -263,7 +261,7 @@ account update <json>     Body is parsed as JSON for the AccountPutRequest.
 account add <json>
 account signup <json>
 account cdr [start] [end]
-account credits
+account credits [paid|unpaid]
 account recurring-charges  (alias: account mrc)
 account payments
 account registration
@@ -271,7 +269,7 @@ account recover <json>
 
 acl list
 acl add <json>
-acl remove <json>
+acl remove <cidr[,cidr...]>
 
 authentication get
 authentication update <json>
@@ -290,23 +288,23 @@ gateways update <id> <json>
 gateways remove <id>
 gateways numbers <id>
 
-inumbering search-inventory [--npa --nxx --state --rate-center --contains --ends-with --limit]
-inumbering coverage [--state --rate-center]
+inumbering search-inventory --tn-mask MASK [--quantity N] [--province XX] [--rate-center NAME] [--lata N]
+inumbering coverage --count-by state|city|rateCenter|npanxx|block [--loc-state XX] [--city NAME] [--rc-abbre NAME] [--npa NPA] [--lata N]
 inumbering order <json>
 inumbering ports
-inumbering port <id>
+inumbering port <id>          <id> is the 5-character pid from submit-port
 inumbering submit-port <json>
 inumbering port-availability <number>
 
 lookups cnam <number>
 lookups lrn <number> <ani>
 
-messaging history [--number --start --end --type]
+messaging history --number TN [--from unix] [--to unix] [--type sms|mms|dlr]
 messaging send <json>
 messaging create-brand <json>
-messaging campaign-status
+messaging campaign-status <id[,id...]>
 messaging create-campaign <json>
-messaging numbers-state [--numbers=2015550123,2015551235]
+messaging numbers-state --numbers=2015550123,2015551235
 messaging health
 messaging health-alerts
 messaging set-health-alerts <true|false>
@@ -334,8 +332,8 @@ numbers remove-sms <number>
 numbers get-messaging <number>
 numbers patch-messaging <number> <json>
 numbers assign-campaign <number> <json>
-numbers unassign-campaign <number>
-numbers bulk-unassign-campaign <2015550123,2015551235>
+numbers unassign-campaign <number> <campaignId>
+numbers bulk-unassign-campaign <2015550123,2015551235> <campaignId>
 numbers set-port-out-pin <number> <json>
 
 support list
@@ -352,7 +350,7 @@ support reply <id> <json>
 ## 💡 Examples
 
 ```text
-voicetel> inumbering search-inventory --npa=201 --state=NJ --limit=5
+voicetel> inumbering search-inventory --tn-mask=201555* --province=NJ --quantity=5
 {
   "numbers": [
     {"number": "2015550100", "rateCenter": "Newark", "city": "Newark", "province": "NJ", "lata": "224"},
@@ -367,7 +365,7 @@ voicetel> inumbering order {"numbers":[{"Value":"2015550100"}]}
   "numbersOrdered": ["2015550100"]
 }
 
-voicetel> numbers set-forward 2015550100 {"destination":2125550199}
+voicetel> numbers set-forward 2015550100 {"destination":"2125550199"}
 {"number": "2015550100", "forwardTo": "2125550199"}
 
 voicetel> messaging send {"fromNumber":"2015550100","toNumber":"2125550199","text":"hello from VoiceTel CLI"}

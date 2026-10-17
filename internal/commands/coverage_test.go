@@ -38,12 +38,13 @@ func TestCommandSmoke(t *testing.T) {
 		{"GET", "/v2.2/account/registration", `{"status":"success","data":{}}`, "account registration"},
 		{"POST", "/v2.2/account/recovery", `{"status":"success","data":{"message":"sent"}}`, `account recover {"email":"a@b.c"}`},
 		{"POST", "/v2.2/accounts", `{"status":"success","data":{"username":"u"}}`, `account signup {"name":"n","email":"a@b.c"}`},
-		{"POST", "/v2.2/account", `{"status":"success","data":{"username":"u"}}`, `account add {"username":1000,"name":"n","email":"a@b.c"}`},
+		{"POST", "/v2.2/account", `{"status":"success","data":{"username":"u"}}`, `account add {"username":"1000","name":"n","email":"a@b.c"}`},
 		{"GET", "/v2.2/account/cdr", `{"status":"success","data":{"cdr":[],"start":0,"end":0}}`, "account cdr 1700000000 1700000100"},
+		{"GET", "/v2.2/account/credits", `{"status":"success","data":{"credits":[]}}`, "account credits unpaid"},
 
 		// acl
 		{"GET", "/v2.2/acl", `{"status":"success","data":{"acl":[]}}`, "acl list"},
-		{"DELETE", "/v2.2/acl", `{"status":"success","data":{"removed":[]}}`, `acl remove {"acl":[{"cidr":"203.0.113.0/24"}]}`},
+		{"DELETE", "/v2.2/acl", `{"status":"success","data":{"removed":[]}}`, "acl remove 203.0.113.0/24,203.0.113.1/32"},
 
 		// authentication
 		{"GET", "/v2.2/auth", `{"status":"success","data":{"authType":0,"authTypeDescription":"Digest","acl":[]}}`, "authentication get"},
@@ -65,10 +66,11 @@ func TestCommandSmoke(t *testing.T) {
 		{"GET", "/v2.2/gateways/7/numbers", `{"status":"success","data":{"numbers":[]}}`, "gateways numbers 7"},
 
 		// inumbering
-		{"GET", "/v2.2/inventory/coverage", `{"status":"success","data":{"coverage":[]}}`, "inumbering coverage --state=NJ"},
+		{"GET", "/v2.2/inventory", `{"status":"success","data":{"numbers":[]}}`, "inumbering search-inventory --tn-mask=201555* --quantity=5 --province=NJ"},
+		{"GET", "/v2.2/inventory/coverage", `{"status":"success","data":{"coverage":[]}}`, "inumbering coverage --count-by=npanxx --loc-state=NJ"},
 		{"POST", "/v2.2/orders", `{"status":"success","data":{"orderId":"o","amountCharged":0,"numbersOrdered":[]}}`, `inumbering order {"numbers":[{"Value":"2015550123"}]}`},
 		{"GET", "/v2.2/ports", `{"status":"success","data":{"ports":[]}}`, "inumbering ports"},
-		{"GET", "/v2.2/ports/3", `{"status":"success","data":{"port":{}}}`, "inumbering port 3"},
+		{"GET", "/v2.2/ports/a3a2a", `{"status":"success","data":{"port":{}}}`, "inumbering port a3a2a"},
 		{"GET", "/v2.2/ports/availability/2015550123", `{"status":"success","data":{"number":"2015550123","portable":true}}`, "inumbering port-availability 2015550123"},
 		{"POST", "/v2.2/ports", `{"status":"success","data":{"pid":"X"}}`, `inumbering submit-port {"did":["2015550123"],"name":"n","nameType":"business","lcBtn":"x","lcAccountNumber":"x","streetNumber":"1","street":"Main","streetType":"ST","city":"X","state":"NJ","zip":"07000","country":"US","authPerson":"X"}`},
 
@@ -78,7 +80,8 @@ func TestCommandSmoke(t *testing.T) {
 		// messaging
 		{"POST", "/v2.2/messages", `{"status":"success","data":{"id":"x","type":"sms","fromNumber":"a","toNumber":"b","parts":1}}`, `messaging send {"fromNumber":"2015550123","toNumber":"2015555678","text":"hi"}`},
 		{"POST", "/v2.2/messaging/brands", `{"status":"success","data":{"result":{"statusCode":"200","status":"Success"}}}`, `messaging create-brand {"messagingBrandId":"B1","messagingBrandName":"Acme"}`},
-		{"GET", "/v2.2/messaging/campaigns", `{"status":"success","data":{"campaigns":[]}}`, "messaging campaign-status"},
+		{"GET", "/v2.2/messaging/campaigns", `{"status":"success","data":{"campaigns":[]}}`, "messaging campaign-status C1,C2"},
+		{"GET", "/v2.2/messages", `{"status":"success","data":{"number":"2015550123","type":"sms","fromTs":0,"toTs":0,"messages":[]}}`, "messaging history --number=2015550123 --from=1 --to=2"},
 		{"POST", "/v2.2/messaging/campaigns", `{"status":"success","data":{"result":{"statusCode":"200","status":"Success"}}}`, `messaging create-campaign {"messagingBrandId":"B1","externalCampaignId":"E","campaignDescription":"d"}`},
 		{"GET", "/v2.2/numbers/messaging", `{"status":"success","data":{"numbers":[]}}`, "messaging numbers-state --numbers=2015550123"},
 		{"GET", "/v2.2/messaging/health", `{"status":"success","data":{"summary":{"numbers":3}}}`, "messaging health"},
@@ -107,7 +110,8 @@ func TestCommandSmoke(t *testing.T) {
 		{"GET", "/v2.2/numbers/2015550123/messaging", `{"status":"success","data":{"number":"2015550123","enabled":true,"carrier":17,"routeIn":1,"resource":"x"}}`, "numbers get-messaging 2015550123"},
 		{"PATCH", "/v2.2/numbers/2015550123/messaging", `{"status":"success","data":{"number":"2015550123","updated":["routeIn"]}}`, `numbers patch-messaging 2015550123 {"routeIn":1}`},
 		{"PUT", "/v2.2/numbers/2015550123/messaging-campaign", `{"status":"success","data":{"number":"2015550123","campaignId":"X","carrier":17}}`, `numbers assign-campaign 2015550123 {"campaignId":"ABCDEFG"}`},
-		{"DELETE", "/v2.2/numbers/2015550123/messaging-campaign", `{"status":"success","data":{"number":"2015550123","campaignId":"X","unassigned":true}}`, "numbers unassign-campaign 2015550123"},
+		{"DELETE", "/v2.2/numbers/2015550123/messaging-campaign", `{"status":"success","data":{"number":"2015550123","campaignId":"X","unassigned":true}}`, "numbers unassign-campaign 2015550123 ABCDEFG"},
+		{"DELETE", "/v2.2/numbers/messaging-campaign", `{"status":"success","data":{"campaignId":"X","unassignedNumbers":[]}}`, "numbers bulk-unassign-campaign 2015550123,2015551235 ABCDEFG"},
 		{"PATCH", "/v2.2/numbers/2015550123/port-out-pin", `{"status":"success","data":{"number":"2015550123","portOutPin":"1234"}}`, `numbers set-port-out-pin 2015550123 {"pin":"1234"}`},
 
 		// support
@@ -175,7 +179,9 @@ func TestErrorBranches(t *testing.T) {
 		"numbers assign-campaign",
 		"numbers assign-campaign 2015550123 not-json",
 		"numbers unassign-campaign",
+		"numbers unassign-campaign 2015550123",
 		"numbers bulk-unassign-campaign",
+		"numbers bulk-unassign-campaign 2015550123,2015551235",
 		"numbers set-port-out-pin",
 		"numbers set-port-out-pin 2015550123 not-json",
 		"numbers add not-json",
@@ -221,21 +227,25 @@ func TestErrorBranches(t *testing.T) {
 
 		// INumbering
 		"inumbering port",
-		"inumbering port abc",
 		"inumbering port-availability",
 		"inumbering order not-json",
 		"inumbering submit-port not-json",
-		"inumbering search-inventory --npa=bad",
-		"inumbering search-inventory --nxx=bad",
-		"inumbering search-inventory --limit=bad",
+		"inumbering search-inventory", // missing required --tn-mask
+		"inumbering search-inventory --quantity=bad --tn-mask=201",
+		"inumbering search-inventory --lata=bad --tn-mask=201",
 		"inumbering search-inventory --unknown=x",
+		"inumbering coverage", // missing required --count-by
+		"inumbering coverage --count-by=state --lata=bad",
 
 		// Messaging
 		"messaging send not-json",
 		"messaging create-brand not-json",
 		"messaging create-campaign not-json",
-		"messaging history --start=bad",
-		"messaging history --end=bad",
+		"messaging history", // missing required --number
+		"messaging history --number=2015550123 --from=bad",
+		"messaging history --number=2015550123 --to=bad",
+		"messaging campaign-status", // missing required ids
+		"messaging numbers-state",   // missing required --numbers
 		"messaging set-health-alerts",
 		"messaging set-health-alerts notabool",
 		"messaging health-check",
@@ -243,7 +253,7 @@ func TestErrorBranches(t *testing.T) {
 
 		// ACL
 		"acl add not-json",
-		"acl remove not-json",
+		"acl remove",
 
 		// Authentication
 		"authentication update not-json",

@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"strings"
+
 	voicetel "github.com/voicetel/go-sdk/v2"
 )
 
@@ -32,13 +34,12 @@ func registerACL(r *Registry) {
 		{
 			Names:    []string{"remove"},
 			Synopsis: "Remove one or more CIDR entries.",
-			Usage:    `acl remove <json>  e.g. {"acl":[{"cidr":"203.0.113.0/24"}]}`,
-			Run: func(c *Context, _ []string, tail string) error {
-				var body voicetel.AclModifyRequest
-				if err := parseJSON("acl remove", tail, &body); err != nil {
+			Usage:    "acl remove <cidr[,cidr...]>  e.g. acl remove 203.0.113.0/24,203.0.113.1/32",
+			Run: func(c *Context, args []string, _ string) error {
+				if err := requireArgs("acl remove", args, 1, "<cidr[,cidr...]>"); err != nil {
 					return err
 				}
-				out, err := c.Client.ACL().Remove(c.Ctx, body)
+				out, err := c.Client.ACL().Remove(c.Ctx, strings.Split(args[0], ","))
 				return printResultG(c, out, err)
 			},
 		},

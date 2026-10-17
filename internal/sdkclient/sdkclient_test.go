@@ -94,7 +94,7 @@ func TestLoginExchangesForAPIKey(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL, "", testUA)
-	key, err := c.Login(context.Background(), 1000000001, "hunter2")
+	key, err := c.Login(context.Background(), "1000000001", "hunter2")
 	if err != nil {
 		t.Fatalf("Login: unexpected error: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestLoginPropagatesError(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL, "", testUA)
-	if _, err := c.Login(context.Background(), 1000000001, "wrong"); err == nil {
+	if _, err := c.Login(context.Background(), "1000000001", "wrong"); err == nil {
 		t.Fatal("Login: expected error from 401, got nil")
 	}
 }

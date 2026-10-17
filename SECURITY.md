@@ -26,8 +26,8 @@ allow reasonable time for a fix before any public disclosure.
 
 ## Scope Notes
 
-The CLI persists per-profile credentials (AccountSid + API key) to
-the user's config directory and constructs authenticated HTTP
+The CLI persists an API key to the user's config directory
+(`~/.voicetel/config.toml`, mode 0600) and constructs authenticated HTTP
 requests against the VoiceTel REST API via the VoiceTel Go SDK.
 Hardening expectations:
 
@@ -35,6 +35,11 @@ Hardening expectations:
   permissions are 0600).
 - Do not paste the API key into shared shell history; use the
   `-x` flag with a pipe or environment-loaded value where possible.
+- REPL history (`~/.voicetel/history`) is kept at mode 0600, and
+  credential-bearing lines (`login`, `set api-key`) are filtered out
+  rather than persisted — but the account password still transits
+  process memory and the terminal scrollback when `login` is used
+  interactively.
 - The REPL never echoes the API key back to the terminal once set,
   but it is held in process memory for the duration of the session.
 - The Go SDK underlying the CLI pins TLS via `crypto/tls` defaults

@@ -78,16 +78,20 @@ func registerAccount(r *Registry) {
 		},
 		{
 			Names:    []string{"credits"},
-			Synopsis: "Full credit history.",
-			Usage:    "account credits",
-			Run: func(c *Context, _ []string, _ string) error {
-				out, err := c.Client.Account().Credits(c.Ctx)
+			Synopsis: "Credit history, optionally filtered by status.",
+			Usage:    "account credits [paid|unpaid]",
+			Run: func(c *Context, args []string, _ string) error {
+				status := ""
+				if len(args) >= 1 {
+					status = args[0]
+				}
+				out, err := c.Client.Account().Credits(c.Ctx, status)
 				return printResultG(c, out, err)
 			},
 		},
 		{
 			Names:    []string{"recurring-charges", "mrc"},
-			Synopsis: "Active monthly recurring charges (rate-limited).",
+			Synopsis: "Active monthly recurring charges (rate-limited 6/hr/IP).",
 			Usage:    "account recurring-charges  (alias: account mrc)",
 			Run: func(c *Context, _ []string, _ string) error {
 				out, err := c.Client.Account().RecurringCharges(c.Ctx)
@@ -96,7 +100,7 @@ func registerAccount(r *Registry) {
 		},
 		{
 			Names:    []string{"payments"},
-			Synopsis: "Full payment history (rate-limited).",
+			Synopsis: "Full payment history.",
 			Usage:    "account payments",
 			Run: func(c *Context, _ []string, _ string) error {
 				out, err := c.Client.Account().Payments(c.Ctx)
@@ -105,7 +109,7 @@ func registerAccount(r *Registry) {
 		},
 		{
 			Names:    []string{"registration"},
-			Synopsis: "Current SIP registration (rate-limited).",
+			Synopsis: "Current SIP registration.",
 			Usage:    "account registration",
 			Run: func(c *Context, _ []string, _ string) error {
 				out, err := c.Client.Account().Registration(c.Ctx)

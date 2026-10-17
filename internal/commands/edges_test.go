@@ -3,7 +3,9 @@ package commands
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -72,13 +74,21 @@ func TestDispatchGroupUnknownSub(t *testing.T) {
 	}
 }
 
-// loginCommand with a non-numeric username returns the integer-parse error
-// rather than calling Login.
+// loginCommand no longer validates the username client-side (the spec types
+// it as a string); a rejected login surfaces the API's error.
 func TestLoginCommandBadUsername(t *testing.T) {
 	h := newHarness(t)
+	h.stub("POST", "/v2.2/account/api-key", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = fmt.Fprint(w, `{"status":"error","error":{"code":401,"message":"Invalid username or password"}}`)
+	})
 	r := BuildRegistry()
-	if err := h.dispatch("login alice secret", r); err == nil {
-		t.Fatal("expected error for non-integer username, got nil")
+	err := h.dispatch("login alice secret", r)
+	if err == nil {
+		t.Fatal("expected the 401 to propagate, got nil")
+	}
+	if !strings.Contains(err.Error(), "Invalid username or password") {
+		t.Errorf("expected the API message, got %v", err)
 	}
 }
 
