@@ -91,8 +91,10 @@ func registerNumbers(r *Registry) {
 		},
 		{
 			Names:    []string{"set-route"},
-			Synopsis: "Update a TN's outbound route.",
-			Usage:    "numbers set-route <number> <json>",
+			Synopsis: "Update a TN's route.",
+			Usage: "numbers set-route <number> <json>\n" +
+				"  Global route types: 1 USER, 2 T30, 3 VOICE_BRIDGE, 4 DID (default),\n" +
+				`  5 T38, 6 VOICEML, 8 SDN, 9 MOBILE (no 7).  e.g. {"route":4}`,
 			Run: func(c *Context, args []string, tail string) error {
 				if err := requireArgs("numbers set-route", args, 1, "<number> <json>"); err != nil {
 					return err
