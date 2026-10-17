@@ -96,7 +96,7 @@ func TestPrepareHistoryScrubsLegacyFile(t *testing.T) {
 	}
 	defer func() { _ = os.Remove(session) }()
 
-	data, err := os.ReadFile(hist)
+	data, err := os.ReadFile(hist) // #nosec G304 -- test fixture inside t.TempDir()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestPrepareHistoryScrubsLegacyFile(t *testing.T) {
 		t.Errorf("durable mode = %o, want 600", perm)
 	}
 	// The shim is seeded with the scrubbed history so ↑ reaches yesterday.
-	seed, err := os.ReadFile(session)
+	seed, err := os.ReadFile(session) // #nosec G304 -- test fixture inside t.TempDir()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestFinalizeHistoryFiltersSession(t *testing.T) {
 	if err := finalizeHistory(session, hist); err != nil {
 		t.Fatalf("finalizeHistory: %v", err)
 	}
-	data, err := os.ReadFile(hist)
+	data, err := os.ReadFile(hist) // #nosec G304 -- test fixture inside t.TempDir()
 	if err != nil {
 		t.Fatal(err)
 	}
