@@ -29,6 +29,15 @@ jobs:
       # `make release` cross-compiles to 9 platforms and packages each as
       # tar.gz (darwin/linux/freebsd) or zip (windows). Output names:
       # voicetel-cli_<version>_<os>-<arch>{.tar.gz,.zip}
+      # The committed go.mod carries a `replace ... => ../go` for local
+      # monorepo development. In CI only the cli repo is checked out, so that
+      # sibling path doesn't exist — drop the replace and resolve the published
+      # go-sdk module (v2.2.21) before building.
+      - name: Resolve published go-sdk
+        run: |
+          go mod edit -dropreplace=github.com/voicetel/go-sdk/v2
+          go mod tidy
+
       - name: Build all platforms + package
         run: make release
 
