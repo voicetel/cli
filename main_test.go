@@ -692,7 +692,7 @@ func TestMainBinaryHandlesBadFlag(t *testing.T) {
 	}
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "voicetel-cli-test")
-	cmd := exec.Command("go", "build", "-o", bin, ".") //nolint:gosec // building our own test binary at a temp path
+	cmd := exec.Command("go", "build", "-buildvcs=false", "-o", bin, ".") //nolint:gosec // building our own test binary at a temp path
 	cmd.Dir = "."
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
@@ -711,7 +711,7 @@ func TestMainBinaryPrintsVersion(t *testing.T) {
 	}
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "voicetel-cli-test")
-	cmd := exec.Command("go", "build", "-o", bin, ".") //nolint:gosec // building our own test binary at a temp path
+	cmd := exec.Command("go", "build", "-buildvcs=false", "-o", bin, ".") //nolint:gosec // building our own test binary at a temp path
 	cmd.Dir = "."
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
