@@ -69,8 +69,8 @@ Grab a release from [GitHub Releases](https://github.com/voicetel/cli/releases) 
 
 ```bash
 # Linux amd64 example — adjust the archive name for your platform.
-curl -sL https://github.com/voicetel/cli/releases/latest/download/voicetel-cli_0.2.0_linux-amd64.tar.gz | tar xz
-sudo mv voicetel-cli_0.2.0_linux-amd64/voicetel-cli /usr/local/bin/
+curl -sL https://github.com/voicetel/cli/releases/latest/download/voicetel-cli_0.3.3_linux-amd64.tar.gz | tar xz
+sudo mv voicetel-cli_0.3.3_linux-amd64/voicetel-cli /usr/local/bin/
 ```
 
 ### From source
