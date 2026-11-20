@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -402,11 +403,21 @@ func TestNumbersBulkUnassignCampaign(t *testing.T) {
 	}
 }
 
-func TestACLRemoveQueryParams(t *testing.T) {
+func TestACLRemoveBody(t *testing.T) {
 	h := newHarness(t)
 	h.stub("DELETE", "/v2.2/acl", func(w http.ResponseWriter, r *http.Request) {
-		if got := r.URL.Query().Get("cidrs"); got != "203.0.113.0/24,203.0.113.1/32" {
-			t.Errorf("cidrs query wrong: %s", r.URL.RawQuery)
+		// v2.2.21: DELETE /v2.2/acl takes the same {acl: [...]} body as POST — no query params.
+		if r.URL.RawQuery != "" {
+			t.Errorf("unexpected query: %s", r.URL.RawQuery)
+		}
+		var body struct {
+			ACL []struct {
+				CIDR string `json:"cidr"`
+			} `json:"acl"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if len(body.ACL) != 2 || body.ACL[0].CIDR != "203.0.113.0/24" {
+			t.Errorf("acl body wrong: %+v", body)
 		}
 		_, _ = fmt.Fprint(w, `{"status":"success","data":{"removed":[{"cidr":"203.0.113.0/24"}]}}`)
 	})

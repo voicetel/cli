@@ -201,6 +201,7 @@ func BuildRegistry() *Registry {
 	registerLookups(r)
 	registerMessaging(r)
 	registerNumbers(r)
+	registerFax(r)
 	registerSupport(r)
 
 	for _, g := range r.Groups {

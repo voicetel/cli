@@ -33,6 +33,7 @@ type Client interface {
 	INumbering() *voicetel.INumberingService
 	Lookups() *voicetel.LookupsService
 	Messaging() *voicetel.MessagingService
+	Fax() *voicetel.FaxService
 	Numbers() *voicetel.NumbersService
 	Support() *voicetel.SupportService
 }
@@ -85,5 +86,6 @@ func (r *realClient) Gateways() *voicetel.GatewaysService             { return r
 func (r *realClient) INumbering() *voicetel.INumberingService         { return r.inner.INumbering }
 func (r *realClient) Lookups() *voicetel.LookupsService               { return r.inner.Lookups }
 func (r *realClient) Messaging() *voicetel.MessagingService           { return r.inner.Messaging }
+func (r *realClient) Fax() *voicetel.FaxService                       { return r.inner.Fax }
 func (r *realClient) Numbers() *voicetel.NumbersService               { return r.inner.Numbers }
 func (r *realClient) Support() *voicetel.SupportService               { return r.inner.Support }

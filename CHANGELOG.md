@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.3 — 2026-11-20
+
+Rebuild against go-sdk v2.2.21.
+
+### Added
+- `fax` group: `fax numbers` (fax-capable numbers), `fax send <from> <to> <file...> [id <uuid>]` (multipart, idempotent per submission id), `fax history <number> [limit N] [status S]`, `fax get <id>`, `fax document <id> [out.pdf]` (PDF download).
+
+### Changed
+- `acl remove` now sends the v2.2.21 `{acl: [{cidr}]}` body (the API no longer reads the old `cidrs` query parameter).
+
 ## 0.3.2 — 2026-11-20
 
 Rebuild against go-sdk v2.2.20.

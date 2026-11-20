@@ -3,6 +3,8 @@ package commands
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -25,6 +27,10 @@ func (m *muxLike) catchAll() func(http.ResponseWriter, *http.Request) {
 // the dispatch test.)
 
 func TestCommandSmoke(t *testing.T) {
+	faxFile := filepath.Join(t.TempDir(), "doc.pdf")
+	if err := os.WriteFile(faxFile, []byte("%PDF-1.4 test"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	cases := []struct {
 		method string
 		path   string
@@ -102,6 +108,11 @@ func TestCommandSmoke(t *testing.T) {
 		{"GET", "/v2.2/numbers/2015550123/directory-listing", `{"status":"success","data":{"number":"2015550123","status":"listed","eligible":true,"listing":null,"pending":null}}`, "numbers get-directory-listing 2015550123"},
 		{"PUT", "/v2.2/numbers/2015550123/directory-listing", `{"status":"success","data":{"number":"2015550123","status":"pending","orderId":"1026472"}}`, `numbers set-directory-listing 2015550123 {"type":"business","name":"Acme Corp","city":"New York","state":"NY","zip":"10005"}`},
 		{"DELETE", "/v2.2/numbers/2015550123/directory-listing", `{"status":"success","data":{"number":"2015550123","status":"removing","orderId":"1026473"}}`, "numbers remove-directory-listing 2015550123"},
+		{"POST", "/v2.2/faxes", `{"status":"success","data":{"id":"9f8c2b41a","fromNumber":"2015550123","toNumber":"2125550123","status":"queued","documents":[]}}`, "fax send 2015550123 2125550123 " + faxFile},
+		{"GET", "/v2.2/numbers/fax", `{"status":"success","data":{"numbers":[{"number":"2015550123","destinationId":0,"email":"f@x.com"}]}}`, "fax numbers"},
+		{"GET", "/v2.2/faxes", `{"status":"success","data":{"number":"2015550123","fromTs":1,"toTs":2,"faxes":[],"nextCursor":null}}`, "fax history 2015550123"},
+		{"GET", "/v2.2/faxes/9f8c2b41a", `{"status":"success","data":{"id":"9f8c2b41a","fromNumber":"2015550123","toNumber":"2125550123","status":"sent","submittedAt":"2026-11-20T15:04:05Z","documents":[],"documentAvailable":false,"documentName":"Fax document.pdf"}}`, "fax get 9f8c2b41a"},
+		{"GET", "/v2.2/faxes/9f8c2b41a/document", `%PDF-1.4`, "fax document 9f8c2b41a"},
 		{"GET", "/v2.2/carrier/2015550123", `{"status":"success","data":{"number":"2015550123","carrier":{"name":"EXAMPLE CARRIER","type":"voip","mobile_country_code":null,"mobile_network_code":null,"error_code":null}}}`, "lookups carrier 2015550123"},
 		{"GET", "/v2.2/numbers/2015550123/fax", `{"status":"success","data":{"number":"2015550123","email":"a@b.c"}}`, "numbers get-fax 2015550123"},
 		{"PUT", "/v2.2/numbers/2015550123/fax", `{"status":"success","data":{"number":"2015550123","email":"a@b.c"}}`, `numbers set-fax 2015550123 {"email":"a@b.c"}`},

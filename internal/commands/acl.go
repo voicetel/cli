@@ -33,13 +33,17 @@ func registerACL(r *Registry) {
 		},
 		{
 			Names:    []string{"remove"},
-			Synopsis: "Remove one or more CIDR entries.",
+			Synopsis: "Remove one or more CIDR entries (same body shape as acl add).",
 			Usage:    "acl remove <cidr[,cidr...]>  e.g. acl remove 203.0.113.0/24,203.0.113.1/32",
 			Run: func(c *Context, args []string, _ string) error {
 				if err := requireArgs("acl remove", args, 1, "<cidr[,cidr...]>"); err != nil {
 					return err
 				}
-				out, err := c.Client.ACL().Remove(c.Ctx, strings.Split(args[0], ","))
+				body := voicetel.AclModifyRequest{ACL: make([]voicetel.CidrEntry, 0, len(args))}
+				for _, cidr := range strings.Split(args[0], ",") {
+					body.ACL = append(body.ACL, voicetel.CidrEntry{CIDR: cidr})
+				}
+				out, err := c.Client.ACL().Remove(c.Ctx, body)
 				return printResultG(c, out, err)
 			},
 		},

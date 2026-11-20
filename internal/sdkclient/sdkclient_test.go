@@ -69,6 +69,7 @@ func TestServiceAccessorsAllReturnNonNil(t *testing.T) {
 		"INumbering":     c.INumbering(),
 		"Lookups":        c.Lookups(),
 		"Messaging":      c.Messaging(),
+		"Fax":            c.Fax(),
 		"Numbers":        c.Numbers(),
 		"Support":        c.Support(),
 	}
