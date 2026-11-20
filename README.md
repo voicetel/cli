@@ -2,7 +2,7 @@
 
 The official interactive REPL for the [VoiceTel REST API](https://voicetel.com/docs/api/v2.2/) — provision numbers, place orders, validate e911, send messages, and manage your account, all from a single keystroke-friendly prompt on top of the [VoiceTel Go SDK](https://github.com/voicetel/go-sdk).
 
-![Version](https://img.shields.io/badge/version-0.3.1-blue)
+![Version](https://img.shields.io/badge/version-0.3.2-blue)
 ![Go](https://img.shields.io/badge/go-1.26%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-lightgrey)
@@ -297,6 +297,7 @@ inumbering submit-port <json>
 inumbering port-availability <number>
 
 lookups cnam <number>
+lookups carrier <number>
 lookups lrn <number> <ani>
 
 messaging history --number TN [--from unix] [--to unix] [--type sms|mms|dlr]
@@ -321,6 +322,9 @@ numbers set-route <number> <json>
 numbers set-translation <number> <json>
 numbers set-cnam <number> <json>
 numbers set-lidb <number> <json>
+numbers get-directory-listing <number>
+numbers set-directory-listing <number> <json>
+numbers remove-directory-listing <number>
 numbers get-fax <number>
 numbers set-fax <number> <json>
 numbers remove-fax <number>

@@ -156,6 +156,46 @@ func registerNumbers(r *Registry) {
 			},
 		},
 		{
+			Names:    []string{"get-directory-listing"},
+			Synopsis: "Read the 411 directory listing state.",
+			Usage:    "numbers get-directory-listing <number>",
+			Run: func(c *Context, args []string, _ string) error {
+				if err := requireArgs("numbers get-directory-listing", args, 1, "<number>"); err != nil {
+					return err
+				}
+				out, err := c.Client.Numbers().GetDirectoryListing(c.Ctx, args[0])
+				return printResultG(c, out, err)
+			},
+		},
+		{
+			Names:    []string{"set-directory-listing"},
+			Synopsis: "Add or replace the 411 directory listing (202, applied in the background).",
+			Usage:    `numbers set-directory-listing <number> <json>  e.g. {"type":"business","name":"Acme Corp","city":"New York","state":"NY","zip":"10005"}`,
+			Run: func(c *Context, args []string, tail string) error {
+				if err := requireArgs("numbers set-directory-listing", args, 1, "<number> <json>"); err != nil {
+					return err
+				}
+				var body voicetel.DirectoryListingRequest
+				if err := parseJSON("numbers set-directory-listing", skipArgs(tail, 1), &body); err != nil {
+					return err
+				}
+				out, err := c.Client.Numbers().SetDirectoryListing(c.Ctx, args[0], body)
+				return printResultG(c, out, err)
+			},
+		},
+		{
+			Names:    []string{"remove-directory-listing"},
+			Synopsis: "Remove the 411 directory listing, or cancel a pending add.",
+			Usage:    "numbers remove-directory-listing <number>",
+			Run: func(c *Context, args []string, _ string) error {
+				if err := requireArgs("numbers remove-directory-listing", args, 1, "<number>"); err != nil {
+					return err
+				}
+				out, err := c.Client.Numbers().RemoveDirectoryListing(c.Ctx, args[0])
+				return printResultG(c, out, err)
+			},
+		},
+		{
 			Names:    []string{"get-fax"},
 			Synopsis: "Read fax-to-email routing.",
 			Usage:    "numbers get-fax <number>",

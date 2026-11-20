@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.2 — 2026-11-20
+
+Rebuild against go-sdk v2.2.20.
+
+### Added
+- `numbers get-directory-listing`, `numbers set-directory-listing`, `numbers remove-directory-listing` — the 411 listing on a TN (PUT/DELETE are accepted at once, 202, and applied in the background).
+- `lookups carrier <number>` — carrier and line-type lookup, billed per lookup.
+
+### Fixed
+- go.mod again carries the `replace` to the local go-sdk tree (it had been dropped); e911 `addressid` fixtures use the wire string form.
+
 ## 0.3.1 — 2026-10-17
 
 Rebuild against go-sdk v2.2.17 (v2.2.16 was retracted after a history purge).

@@ -1,7 +1,7 @@
 package commands
 
 func registerLookups(r *Registry) {
-	g := &Group{Name: "lookups", Description: "CNAM and LRN dips."}
+	g := &Group{Name: "lookups", Description: "CNAM, carrier & line type, and LRN dips."}
 	g.Commands = []*Command{
 		{
 			Names:    []string{"cnam"},
@@ -12,6 +12,18 @@ func registerLookups(r *Registry) {
 					return err
 				}
 				out, err := c.Client.Lookups().CNAM(c.Ctx, args[0])
+				return printResultG(c, out, err)
+			},
+		},
+		{
+			Names:    []string{"carrier"},
+			Synopsis: "Carrier and line-type lookup (billed per lookup).",
+			Usage:    "lookups carrier <number>",
+			Run: func(c *Context, args []string, _ string) error {
+				if err := requireArgs("lookups carrier", args, 1, "<number>"); err != nil {
+					return err
+				}
+				out, err := c.Client.Lookups().Carrier(c.Ctx, args[0])
 				return printResultG(c, out, err)
 			},
 		},

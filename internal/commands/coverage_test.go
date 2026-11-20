@@ -53,9 +53,9 @@ func TestCommandSmoke(t *testing.T) {
 		// e911
 		{"GET", "/v2.2/e911", `{"status":"success","data":{"records":[]}}`, "e911 list"},
 		{"POST", "/v2.2/e911", `{"status":"success","data":{"record":{}}}`, `e911 create {"dn":"2015550123","callername":"X","address1":"a","city":"c","state":"NJ","zip":"07000"}`},
-		{"POST", "/v2.2/e911/validations", `{"status":"success","data":{"address":{"addressid":1}}}`, `e911 validate {"address1":"a","city":"c","state":"NJ","zip":"07000"}`},
+		{"POST", "/v2.2/e911/validations", `{"status":"success","data":{"address":{"addressid":"123a45b678c9d012e3f45a67b890c123"}}}`, `e911 validate {"address1":"a","city":"c","state":"NJ","zip":"07000"}`},
 		{"GET", "/v2.2/e911/2015550123", `{"status":"success","data":{"record":{}}}`, "e911 get 2015550123"},
-		{"PUT", "/v2.2/e911/2015550123", `{"status":"success","data":{"record":{}}}`, `e911 provision 2015550123 {"callername":"X","addressid":1}`},
+		{"PUT", "/v2.2/e911/2015550123", `{"status":"success","data":{"record":{}}}`, `e911 provision 2015550123 {"callername":"X","addressid":"123a45b678c9d012e3f45a67b890c123"}`},
 
 		// gateways
 		{"GET", "/v2.2/gateways", `{"status":"success","data":{"gateways":[]}}`, "gateways list"},
@@ -99,6 +99,10 @@ func TestCommandSmoke(t *testing.T) {
 		{"PUT", "/v2.2/numbers/2015550123/translation", `{"status":"success","data":{"number":"2015550123","translation":"1"}}`, `numbers set-translation 2015550123 {"translation":"1"}`},
 		{"PUT", "/v2.2/numbers/2015550123/cnam", `{"status":"success","data":{"number":"2015550123","cnam":true}}`, `numbers set-cnam 2015550123 {"enabled":true}`},
 		{"PUT", "/v2.2/numbers/2015550123/lidb", `{"status":"success","data":{"number":"2015550123","cnam":"X"}}`, `numbers set-lidb 2015550123 {"cnam":"X"}`},
+		{"GET", "/v2.2/numbers/2015550123/directory-listing", `{"status":"success","data":{"number":"2015550123","status":"listed","eligible":true,"listing":null,"pending":null}}`, "numbers get-directory-listing 2015550123"},
+		{"PUT", "/v2.2/numbers/2015550123/directory-listing", `{"status":"success","data":{"number":"2015550123","status":"pending","orderId":"1026472"}}`, `numbers set-directory-listing 2015550123 {"type":"business","name":"Acme Corp","city":"New York","state":"NY","zip":"10005"}`},
+		{"DELETE", "/v2.2/numbers/2015550123/directory-listing", `{"status":"success","data":{"number":"2015550123","status":"removing","orderId":"1026473"}}`, "numbers remove-directory-listing 2015550123"},
+		{"GET", "/v2.2/carrier/2015550123", `{"status":"success","data":{"number":"2015550123","carrier":{"name":"EXAMPLE CARRIER","type":"voip","mobile_country_code":null,"mobile_network_code":null,"error_code":null}}}`, "lookups carrier 2015550123"},
 		{"GET", "/v2.2/numbers/2015550123/fax", `{"status":"success","data":{"number":"2015550123","email":"a@b.c"}}`, "numbers get-fax 2015550123"},
 		{"PUT", "/v2.2/numbers/2015550123/fax", `{"status":"success","data":{"number":"2015550123","email":"a@b.c"}}`, `numbers set-fax 2015550123 {"email":"a@b.c"}`},
 		{"DELETE", "/v2.2/numbers/2015550123/fax", `{"status":"success","data":null}`, "numbers remove-fax 2015550123"},
