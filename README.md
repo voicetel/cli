@@ -2,7 +2,7 @@
 
 The official interactive REPL for the [VoiceTel REST API](https://voicetel.com/docs/api/v2.2/) — provision numbers, place orders, validate e911, send messages, and manage your account, all from a single keystroke-friendly prompt on top of the [VoiceTel Go SDK](https://github.com/voicetel/go-sdk).
 
-![Version](https://img.shields.io/badge/version-0.3.3-blue)
+![Version](https://img.shields.io/badge/version-0.3.4-blue)
 ![Go](https://img.shields.io/badge/go-1.26%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows-lightgrey)
@@ -69,8 +69,8 @@ Grab a release from [GitHub Releases](https://github.com/voicetel/cli/releases) 
 
 ```bash
 # Linux amd64 example — adjust the archive name for your platform.
-curl -sL https://github.com/voicetel/cli/releases/latest/download/voicetel-cli_0.3.3_linux-amd64.tar.gz | tar xz
-sudo mv voicetel-cli_0.3.3_linux-amd64/voicetel-cli /usr/local/bin/
+curl -sL https://github.com/voicetel/cli/releases/latest/download/voicetel-cli_0.3.4_linux-amd64.tar.gz | tar xz
+sudo mv voicetel-cli_0.3.4_linux-amd64/voicetel-cli /usr/local/bin/
 ```
 
 ### From source

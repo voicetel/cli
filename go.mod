@@ -12,5 +12,3 @@ require (
 require golang.org/x/sys v0.49.0 // indirect
 
 // Build against the local SDK source tree, not the registry copy.
-
-replace github.com/voicetel/go-sdk/v2 => ../go

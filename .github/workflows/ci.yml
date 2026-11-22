@@ -18,12 +18,6 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go }}
-      # CI checks out only the cli repo; drop the local ../go replace and
-      # resolve the published go-sdk module so vet/test/lint work.
-      - name: Resolve published go-sdk
-        run: |
-          go mod edit -dropreplace=github.com/voicetel/go-sdk/v2
-          go mod tidy
       - name: Vet
         run: go vet ./...
       - name: Format check
@@ -47,9 +41,5 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
-      - name: Resolve published go-sdk
-        run: |
-          go mod edit -dropreplace=github.com/voicetel/go-sdk/v2
-          go mod tidy
       - name: Build
         run: go build ./...
