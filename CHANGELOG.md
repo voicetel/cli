@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.4 — 2026-11-22
+
+### Fixed
+- `go install github.com/voicetel/cli@latest` works again. The 0.3.2 and 0.3.3 go.mod carried a `replace` for a local go-sdk checkout, and `go install` refuses modules with replace directives. go.mod now resolves the published go-sdk v2.2.21.
+
 ## 0.3.3 — 2026-11-20
 
 Rebuild against go-sdk v2.2.21.

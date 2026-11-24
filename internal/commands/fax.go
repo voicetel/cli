@@ -37,7 +37,7 @@ func registerFax(r *Registry) {
 				}
 				docs := make([]voicetel.FaxDocumentFile, 0, len(files))
 				for _, path := range files {
-					content, err := os.ReadFile(path)
+					content, err := os.ReadFile(path) //nolint:gosec // user-supplied document to upload
 					if err != nil {
 						return fmt.Errorf("fax send: read %s: %w", path, err)
 					}
@@ -64,7 +64,9 @@ func registerFax(r *Registry) {
 				for i := 0; i+1 < len(rest); i += 2 {
 					switch rest[i] {
 					case "limit":
-						fmt.Sscanf(rest[i+1], "%d", &opts.Limit)
+						if _, err := fmt.Sscanf(rest[i+1], "%d", &opts.Limit); err != nil {
+							return fmt.Errorf("fax history: invalid limit %q: %w", rest[i+1], err)
+						}
 					case "status":
 						opts.Status = rest[i+1]
 					}
